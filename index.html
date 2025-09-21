@@ -126,7 +126,6 @@
       );
     }
     function SideNav({open,onClose,brand,items}){
-      /* 닫힌 상태는 완전 숨김 처리 → 클릭 덮음 방지 */
       if(!open){
         return e('div',{className:'hidden md:hidden', 'aria-hidden':true});
       }
@@ -181,7 +180,7 @@
           const entries = Object.entries(manifest)
             .map(([k,v])=>({album:Number(k),count:Number(v)}))
             .filter(x=>x.count>0);
-          const pool = shuffle(entries);
+          const pool = (arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]))(entries);
           const imgs=[];
           let i=0;
           while(imgs.length<want && i<pool.length){
@@ -219,14 +218,15 @@
     function MainHero({manifest}){
       return e('section',{className:'relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden'},[
         e(HeroMosaic,{key:'m',manifest}),
-        /* 모바일 오버레이(문구 가독성) */
-        e('div',{className:'absolute inset-0 bg-black/35 md:bg-black/15'}),
+        <!-- ✅ 클릭 통과 허용 -->
+        e('div',{className:'absolute inset-0 bg-black/35 md:bg-black/15 pointer-events-none'}),
         e('div',{className:'relative text-center px-6 hero-txt-shadow',key:'fg'},[
           e('h1',{className:'text-white drop-shadow text-4xl md:text-6xl font-extrabold tracking-tight'},BRAND.name),
           e('div',{className:'mt-3 text-base md:text-xl text-white/90'},'Beauty • Profile • Advertising')
         ])
       ]);
     }
+
     function MainAbout(){
       const stats=[{k:'Height',v:'170cm'},{k:'Bust',v:'34in'},{k:'Waist',v:'26in'},{k:'Hips',v:'35in'},{k:'Shoes',v:'250mm'}];
       return e('section',{id:'about',className:'max-w-6xl mx-auto px-6 py-12 md:py-16'},[
@@ -300,7 +300,6 @@
     }
     function Footer(){ return e('footer',{className:'border-t py-8 text-center text-sm text-neutral-500'},`© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`); }
 
-    /* ===== 스크롤 상태(rAF) ===== */
     function useRafScrollY(){
       const [y,setY]=useState(window.scrollY||window.pageYOffset||0);
       const rafRef = useRef(0);
@@ -323,11 +322,10 @@
       return y;
     }
 
-    /* ===== VirtualGrid (이벤트 위임으로 클릭 보장) ===== */
     function VirtualGrid({ items, onItemClick, captionHeight=34, gap=16 }){
       const wrapRef = useRef(null);
       const [metrics,setMetrics]=useState({w:0, x:0, top:0, cols:2});
-      useRafScrollY(); // 레이아웃 계산 트리거용
+      useRafScrollY();
 
       useEffect(()=>{
         const measure = ()=>{
@@ -355,7 +353,6 @@
       const totalRows = Math.ceil(items.length / colCount);
       const totalH = Math.max(0, totalRows*cellH + (totalRows-1)*gap);
 
-      // 클릭 이벤트 위임: 어떤 자식 클릭도 앨범으로 라우팅
       useEffect(()=>{
         const el = wrapRef.current;
         if(!el) return;
@@ -404,7 +401,6 @@
       return e('div',{ref:wrapRef, className:'relative', style:{height: totalH+'px'}}, children);
     }
 
-    /* ===== Work 갤러리 ===== */
     function WorkGallery({manifest}){
       const albums = useMemo(()=>Object.entries(manifest)
         .map(([k,v])=>({id:Number(k),count:Number(v)}))
@@ -422,7 +418,6 @@
       ]);
     }
 
-    /* ===== 상세 페이지 ===== */
     function PageDetail({album,photo,manifest}){
       const count = Number(manifest[String(album)] || 0);
       const has = (count>0);
