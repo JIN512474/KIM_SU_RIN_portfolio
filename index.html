@@ -9,9 +9,13 @@
   <link rel="icon" type="image/png"
         href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4DwQACQEBt7q1Xc8AAAAASUVORK5CYII="/>
 
+  <!-- CDN 성능 -->
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
   <!-- 첫 프로필 이미지 2장 미리받기(체감 속도 ↑) -->
-  <link rel="preload" as="image" href="Profile/1.jpg"/>
-  <link rel="preload" as="image" href="Profile/2.jpg"/>
+  <link rel="preload" as="image" href="Profile/1.jpg" imagesrcset="Profile/1.jpg 1x" imagesizes="(max-width:768px) 100vw, 50vw"/>
+  <link rel="preload" as="image" href="Profile/2.jpg" imagesrcset="Profile/2.jpg 1x" imagesizes="(max-width:768px) 100vw, 50vw"/>
 
   <!-- Tailwind / React (Production) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -59,7 +63,8 @@
     /* ============== works.json 로드 (앨범별 장수) ============== */
     async function loadManifest(){
       try{
-        const r = await fetch('works.json?cb=' + Date.now(), { cache:'no-store' });
+        // works.json은 업데이트가 잦지 않으니 기본 캐시 사용 (빠름)
+        const r = await fetch('works.json');
         const j = await r.json();
         if (Array.isArray(j.albums)) {
           const map = {};
@@ -124,8 +129,10 @@
         decoding: 'async',
         onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; }
       };
+      // 레이아웃 안정화 + sizes로 네트웍 최적화
       if (!('width' in props))  props.width  = 1600;
       if (!('height' in props)) props.height = 900;
+      if (!('sizes' in props))  props.sizes  = '(max-width:768px) 100vw, 50vw';
       return e('img', Object.assign({}, props, extra));
     }
     const albumSrc = (album,n)=> `${PHOTOS_ROOT}/${album}/${n}.jpg`;
@@ -156,8 +163,9 @@
         loading: priority ? 'eager' : 'lazy',
         fetchpriority: priority ? 'high' : 'auto',
         decoding: 'async',
-        onError: (ev)=>onErr(ev.currentTarget),
-        width: 900, height: 1200
+        width: 900, height: 1200,
+        sizes: '(max-width:768px) 100vw, 50vw',
+        onError: (ev)=>onErr(ev.currentTarget)
       });
     }
 
@@ -393,12 +401,27 @@
       ]);
     }
 
-    /* ============== 상세 페이지 ============== */
+    /* ============== 상세 페이지 (다음/이전 미리받기) ============== */
     function PageDetail({album,photo,manifest}){
       const count = Number(manifest[String(album)] || 0);
       const has = (count>0);
       const [pp,setPP]=useState(clamp(photo||1,1,Math.max(1,count)));
+
       useEffect(()=>{ setPP(clamp(photo||1,1,Math.max(1,count))); },[album,photo,count]);
+
+      // ✅ 다음/이전 사진 미리받기(체감 빠름)
+      useEffect(()=>{
+        const pre = (n)=>{
+          if(n<1 || n>count) return;
+          const img = new Image();
+          img.decoding = 'async';
+          img.loading = 'eager';
+          img.src = `${PHOTOS_ROOT}/${album}/${n}.jpg`;
+        };
+        pre(pp+1);
+        pre(pp-1);
+      },[pp,album,count]);
+
       if(!has){
         return e('div',{className:'min-h-screen bg-white text-black'},[
           e(TopNav,{brand:BRAND,items:NAV}),
@@ -443,17 +466,15 @@
     }
 
     /* ================= 페이지 컴포넌트 ================= */
-    function WorkPage({onOpenMenu,manifest}){
+    function WorkPage({manifest}){
       return e('div',{className:'min-h-screen bg-white text-black'},[
-        e(DrawerTrigger,{onClick:onOpenMenu}),
         e(TopNav,{brand:BRAND,items:NAV}),
         e(WorkGallery,{manifest}),
         e(Footer)
       ]);
     }
-    function MainPage({onOpenMenu,manifest}){
+    function MainPage({manifest}){
       return e('div',{className:'min-h-screen bg-white text-black'},[
-        e(DrawerTrigger,{onClick:onOpenMenu}),
         e(TopNav,{brand:BRAND,items:NAV}),
         e(MainHero,{manifest}), e(MainAbout), e(MainProfile), e(MainContact), e(Footer)
       ]);
@@ -471,16 +492,21 @@
       }
 
       return e('div',null,[
+        /* ✅ 드로어가 닫혀 있을 때만 햄버거 버튼 노출 (모바일에서 제목 가림 방지) */
+        !menuOpen && e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}),
+
         e(InstaFAB,{href:BRAND.instagram}),
         e(SideNav,{open:menuOpen,onClose:()=>setMenuOpen(false),brand:BRAND,items:NAV}),
+
         (route.name==='work'
-          ? e(WorkPage,{onOpenMenu:()=>setMenuOpen(true),manifest})
+          ? e(WorkPage,{manifest})
           : route.name==='detail'
-            ? e('div',null,[ e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}),
-                              e(TopNav,{brand:BRAND,items:NAV}),
-                              e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}),
-                              e(Footer) ])
-            : e(MainPage,{onOpenMenu:()=>setMenuOpen(true),manifest})
+            ? e('div',null,[
+                e(TopNav,{brand:BRAND,items:NAV}),
+                e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}),
+                e(Footer)
+              ])
+            : e(MainPage,{manifest})
         )
       ]);
     }
