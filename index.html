@@ -5,19 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>KIM SU RIN — Portfolio</title>
 
-  <!-- 파비콘 (404 방지용 1x1) -->
   <link rel="icon" type="image/png"
         href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4DwQACQEBt7q1Xc8AAAAASUVORK5CYII="/>
 
-  <!-- CDN 성능 -->
   <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
-  <!-- 첫 프로필 2장 프리로드(체감↑) -->
   <link rel="preload" as="image" href="Profile/1.jpg" imagesizes="(max-width:768px) 100vw, 50vw"/>
   <link rel="preload" as="image" href="Profile/2.jpg" imagesizes="(max-width:768px) 100vw, 50vw"/>
 
-  <!-- Tailwind / React (Prod) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -25,16 +21,7 @@
   <style>
     html,body,#root{min-height:100%}
     .hero-txt-shadow{text-shadow:0 6px 25px rgba(0,0,0,.35)}
-
-    /* 가상 그리드 아이템: 부드러운 스크롤 */
-    .vg-item{
-      position:absolute;
-      will-change: transform;
-      backface-visibility: hidden;
-      contain: content;
-    }
-
-    /* iOS momentum scroll */
+    .vg-item{position:absolute;will-change:transform;backface-visibility:hidden;contain:content;cursor:pointer}
     .scroll-smooth-touch{-webkit-overflow-scrolling:touch}
   </style>
 
@@ -46,14 +33,10 @@
   <div id="root"></div>
 
   <script>
-  /* eslint-env browser */
-  /* global React, ReactDOM */
-  // @ts-nocheck
   (function(){
     const e = React.createElement;
     const {useState,useEffect,useRef,useMemo} = React;
 
-    /* ========= 기본 데이터 ========= */
     const BRAND = {
       name:"KIM SU RIN",
       email:"rlatnfls125@naver.com",
@@ -70,7 +53,6 @@
     const PROFILE_ROOT  = "Profile";
     const PROFILE_TOTAL = 5;
 
-    /* ========== works.json 로드 (앨범 장수) ========== */
     async function loadManifest(){
       try{
         const r = await fetch('works.json',{cache:'default'});
@@ -81,13 +63,9 @@
           return map;
         }
         return j;
-      }catch(e){
-        console.error('works.json load failed', e);
-        return {};
-      }
+      }catch(e){ console.error('works.json load failed', e); return {}; }
     }
 
-    /* ========== 라우팅 ========== */
     function parseRoute(){
       const h = location.hash || "";
       let m;
@@ -97,7 +75,7 @@
       return {name:"home"};
     }
     function useHashRoute(){
-      const [r,setR]=useState(parseRoute());
+      const [r,setR]=React.useState(parseRoute());
       useEffect(()=>{
         const f=()=>setR(parseRoute());
         addEventListener("hashchange",f,{passive:true});
@@ -117,21 +95,17 @@
     const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
     const shuffle=arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
 
-    /* ========== 이미지 베이스 유틸 ========== */
     function AutoImgBase(props){
       const extra = {
-        loading: 'lazy',
-        decoding: 'async',
-        fetchpriority: 'auto',
+        loading: 'lazy', decoding: 'async', fetchpriority: 'auto',
         onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; }
       };
       if (!('width' in props))  props.width  = 800;
-      if (!('height' in props)) props.height = 1420; /* 9:16 근사 */
+      if (!('height' in props)) props.height = 1420;
       if (!('sizes' in props))  props.sizes  = '(max-width:768px) 50vw, 20vw';
       return e('img', Object.assign({}, props, extra));
     }
 
-    /* ========== 공통 UI ========== */
     function InstaFAB({href}){
       return e('a',{href,target:'_blank',rel:'noreferrer',
         className:'fixed right-4 bottom-4 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full bg-black text-white shadow-lg hover:opacity-90',
@@ -152,9 +126,13 @@
       );
     }
     function SideNav({open,onClose,brand,items}){
-      return e('div',{className:`fixed inset-0 z-50 md:hidden ${open?'':'pointer-events-none'}`},[
-        e('div',{key:'ov',onClick:onClose,className:`absolute inset-0 bg-black/40 transition-opacity ${open?'opacity-100':'opacity-0'}`}),
-        e('aside',{key:'as',className:`absolute left-0 top-0 bottom-0 w-64 bg-white transition-transform ${open?'translate-x-0':'-translate-x-full'}`},[
+      /* 닫힌 상태는 완전 숨김 처리 → 클릭 덮음 방지 */
+      if(!open){
+        return e('div',{className:'hidden md:hidden', 'aria-hidden':true});
+      }
+      return e('div',{className:'fixed inset-0 z-50 md:hidden'},[
+        e('div',{key:'ov',onClick:onClose,className:'absolute inset-0 bg-black/40'}),
+        e('aside',{key:'as',className:'absolute left-0 top-0 bottom-0 w-64 bg-white shadow-lg'},[
           e('div',{className:'p-4 border-b',key:'hd'},
             e('button',{onClick:()=>{onClose&&onClose();location.hash="#/home";window.scrollTo({top:0,behavior:'smooth'});},
               className:'text-lg font-bold tracking-tight hover:opacity-70'},brand.name)
@@ -181,7 +159,6 @@
       );
     }
 
-    /* ========== 반응형 체크 ========== */
     function useIsMobile(){
       const [m,setM]=useState(window.matchMedia("(max-width: 767.98px)").matches);
       useEffect(()=>{
@@ -193,7 +170,6 @@
       return m;
     }
 
-    /* ========== 히어로 모자이크 ========== */
     function HeroMosaic({manifest}){
       const isMobile = useIsMobile();
       const want = isMobile ? 4 : 6;
@@ -240,10 +216,11 @@
       );
     }
 
-    /* ========== 메인 섹션 ========== */
     function MainHero({manifest}){
       return e('section',{className:'relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden'},[
         e(HeroMosaic,{key:'m',manifest}),
+        /* 모바일 오버레이(문구 가독성) */
+        e('div',{className:'absolute inset-0 bg-black/35 md:bg-black/15'}),
         e('div',{className:'relative text-center px-6 hero-txt-shadow',key:'fg'},[
           e('h1',{className:'text-white drop-shadow text-4xl md:text-6xl font-extrabold tracking-tight'},BRAND.name),
           e('div',{className:'mt-3 text-base md:text-xl text-white/90'},'Beauty • Profile • Advertising')
@@ -251,13 +228,7 @@
       ]);
     }
     function MainAbout(){
-      const stats=[
-        {k:'Height',v:'170cm'},
-        {k:'Bust',v:'34in'},
-        {k:'Waist',v:'26in'},
-        {k:'Hips',v:'35in'},
-        {k:'Shoes',v:'250mm'}
-      ];
+      const stats=[{k:'Height',v:'170cm'},{k:'Bust',v:'34in'},{k:'Waist',v:'26in'},{k:'Hips',v:'35in'},{k:'Shoes',v:'250mm'}];
       return e('section',{id:'about',className:'max-w-6xl mx-auto px-6 py-12 md:py-16'},[
         e('h2',{className:'text-2xl md:text-3xl font-bold'},"About"),
         e('div',{className:'mt-6 grid grid-cols-2 md:grid-cols-5 gap-4'},
@@ -277,30 +248,17 @@
         `${PROFILE_ROOT}/${index} .jpg`,
       ];
       let i = 0;
-      const onErr = (img) => {
-        if (i >= fallback.length) { img.style.opacity = 0.25; return; }
-        img.src = fallback[i++];
-      };
-      return e('img',{
-        src: primary,
-        alt: alt || `Profile ${index}`,
+      const onErr = (img) => { if (i >= fallback.length) { img.style.opacity = 0.25; return; } img.src = fallback[i++]; };
+      return e('img',{ src: primary, alt: alt || `Profile ${index}`,
         className: (className||'') + ' object-cover',
-        loading: priority ? 'eager' : 'lazy',
-        fetchpriority: priority ? 'high' : 'auto',
-        decoding: 'async',
-        width: 900, height: 1200,
-        sizes: '(max-width:768px) 100vw, 50vw',
-        onError: (ev)=>onErr(ev.currentTarget)
-      });
+        loading: priority ? 'eager' : 'lazy', fetchpriority: priority ? 'high' : 'auto', decoding: 'async',
+        width: 900, height: 1200, sizes: '(max-width:768px) 100vw, 50vw', onError: (ev)=>onErr(ev.currentTarget) });
     }
     function ProfileCarousel(){
       const [idx,setIdx]=useState(1);
       const prev = ()=> setIdx(i=>clamp(i-1,1,PROFILE_TOTAL));
       const next = ()=> setIdx(i=>clamp(i+1,1,PROFILE_TOTAL));
-      useEffect(()=>{
-        const pre = (n)=>{ if(n<1||n>PROFILE_TOTAL) return; const img = new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PROFILE_ROOT}/${n}.jpg`; };
-        pre(idx+1); pre(idx-1);
-      },[idx]);
+      useEffect(()=>{ const pre=(n)=>{ if(n<1||n>PROFILE_TOTAL) return; const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PROFILE_ROOT}/${n}.jpg`; }; pre(idx+1); pre(idx-1); },[idx]);
       return e('div',{className:'relative'},[
         e('div',{className:'aspect-[3/4] bg-neutral-100 overflow-hidden rounded-lg'},
           e(ProfileImg,{ index:idx, alt:`Profile ${idx}`, className:'w-full h-full', priority:true })
@@ -340,12 +298,9 @@
         )
       ]);
     }
-    function Footer(){
-      return e('footer',{className:'border-t py-8 text-center text-sm text-neutral-500'},
-        `© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`);
-    }
+    function Footer(){ return e('footer',{className:'border-t py-8 text-center text-sm text-neutral-500'},`© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`); }
 
-    /* ========== ✅ 가상 그리드 (윈도잉) ========== */
+    /* ===== 스크롤 상태(rAF) ===== */
     function useRafScrollY(){
       const [y,setY]=useState(window.scrollY||window.pageYOffset||0);
       const rafRef = useRef(0);
@@ -368,12 +323,12 @@
       return y;
     }
 
+    /* ===== VirtualGrid (이벤트 위임으로 클릭 보장) ===== */
     function VirtualGrid({ items, onItemClick, captionHeight=34, gap=16 }){
       const wrapRef = useRef(null);
       const [metrics,setMetrics]=useState({w:0, x:0, top:0, cols:2});
-      const scrollY = useRafScrollY();
+      useRafScrollY(); // 레이아웃 계산 트리거용
 
-      // 측정
       useEffect(()=>{
         const measure = ()=>{
           const el = wrapRef.current;
@@ -381,7 +336,6 @@
           const rect = el.getBoundingClientRect();
           const w = rect.width;
           const pageTop = rect.top + (window.scrollY||window.pageYOffset||0);
-          // Tailwind breakpoints와 유사: <640:2, <768:3, <1024:4, >=1024:5
           const vw = window.innerWidth;
           const cols = vw < 640 ? 2 : (vw < 768 ? 3 : (vw < 1024 ? 4 : 5));
           setMetrics({w, x: rect.left, top: pageTop, cols});
@@ -401,46 +355,56 @@
       const totalRows = Math.ceil(items.length / colCount);
       const totalH = Math.max(0, totalRows*cellH + (totalRows-1)*gap);
 
-      // 현재 뷰 범위 → 렌더 범위 계산
-      const viewTop = Math.max(0, scrollY - top);
-      const viewH   = window.innerHeight;
-      const firstRow = Math.max(0, Math.floor(viewTop / (cellH + gap)));
-      const rowsInView = Math.ceil(viewH / (cellH + gap)) + 1;
-      const overscan = 2;
-      const startRow = Math.max(0, firstRow - overscan);
-      const endRow   = Math.min(totalRows-1, firstRow + rowsInView + overscan);
+      // 클릭 이벤트 위임: 어떤 자식 클릭도 앨범으로 라우팅
+      useEffect(()=>{
+        const el = wrapRef.current;
+        if(!el) return;
+        const onClick = (ev)=>{
+          let node = ev.target;
+          while(node && node !== el){
+            if(node.dataset && node.dataset.album){
+              const aid = Number(node.dataset.album);
+              if(onItemClick) onItemClick(aid);
+              return;
+            }
+            node = node.parentElement;
+          }
+        };
+        el.addEventListener('click', onClick);
+        return ()=>el.removeEventListener('click', onClick);
+      },[onItemClick]);
 
       const children = [];
-      for(let r=startRow;r<=endRow;r++){
-        for(let c=0;c<colCount;c++){
-          const idx = r*colCount + c;
-          if(idx >= items.length) break;
-          const item = items[idx];
-          const x = c*(cellW + gap);
-          const y = r*(cellH + gap);
-          children.push(
-            e('figure',{
-              key:item,
-              className:'vg-item overflow-hidden cursor-pointer group',
-              style:{transform:`translate3d(${x}px,${y}px,0px)`, width:cellW+'px', height:cellH+'px'}
-            },[
-              e('div',{className:'w-full', style:{width:'100%', height:imgH+'px', background:'#eee'}},
-                e(AutoImgBase,{
-                  src:`${PHOTOS_ROOT}/${item}/1.jpg`,
-                  alt:`Album ${item}`,
-                  className:'w-full h-full object-cover md:group-hover:scale-[1.03] transition-transform duration-500',
-                })
-              ),
-              e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${item}`)
-            ])
-          );
-        }
+      for(let idx=0; idx<items.length; idx++){
+        const r = Math.floor(idx / colCount);
+        const c = idx % colCount;
+        const albumId = items[idx];
+        const x = c*(cellW + gap);
+        const y = r*(cellH + gap);
+        children.push(
+          e('figure',{
+            key:albumId,
+            className:'vg-item overflow-hidden group',
+            style:{transform:`translate3d(${x}px,${y}px,0px)`, width:cellW+'px', height:cellH+'px'},
+            'data-album': String(albumId), tabIndex:0, role:'button', 'aria-label':`Open album ${albumId}`
+          },[
+            e('div',{'data-album':String(albumId), className:'w-full', style:{width:'100%', height:imgH+'px', background:'#eee'}},
+              e(AutoImgBase,{
+                'data-album': String(albumId),
+                src:`${PHOTOS_ROOT}/${albumId}/1.jpg`,
+                alt:`Album ${albumId}`,
+                className:'w-full h-full object-cover md:group-hover:scale-[1.03] transition-transform duration-500'
+              })
+            ),
+            e('figcaption',{'data-album':String(albumId), className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${albumId}`)
+          ])
+        );
       }
 
       return e('div',{ref:wrapRef, className:'relative', style:{height: totalH+'px'}}, children);
     }
 
-    /* ========== Work 갤러리 (VirtualGrid 적용) ========== */
+    /* ===== Work 갤러리 ===== */
     function WorkGallery({manifest}){
       const albums = useMemo(()=>Object.entries(manifest)
         .map(([k,v])=>({id:Number(k),count:Number(v)}))
@@ -452,23 +416,20 @@
       return e('section',{id:'work',className:'px-3 md:px-8 py-8 md:py-12 scroll-smooth-touch'},[
         e('div',{className:'mb-6 flex items-baseline justify-between'},[
           e('h2',{className:'text-2xl md:text-4xl font-bold'},'Photography'),
-          e('span',{className:'text-xs text-neutral-500'},'Virtualized grid')
+          e('span',{className:'text-xs text-neutral-500'},'Virtualized grid (Click restored)')
         ]),
         e(VirtualGrid,{items:albums, onItemClick:(al)=>{ location.hash=`#/p/${al}/1`; }})
       ]);
     }
 
-    /* ========== 상세 페이지 (prefetch) ========== */
+    /* ===== 상세 페이지 ===== */
     function PageDetail({album,photo,manifest}){
       const count = Number(manifest[String(album)] || 0);
       const has = (count>0);
       const [pp,setPP]=useState(clamp(photo||1,1,Math.max(1,count)));
 
       useEffect(()=>{ setPP(clamp(photo||1,1,Math.max(1,count))); },[album,photo,count]);
-      useEffect(()=>{
-        const pre=(n)=>{ if(n<1||n>count) return; const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PHOTOS_ROOT}/${album}/${n}.jpg`; };
-        pre(pp+1); pre(pp-1);
-      },[pp,album,count]);
+      useEffect(()=>{ const pre=(n)=>{ if(n<1||n>count) return; const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PHOTOS_ROOT}/${album}/${n}.jpg`; }; pre(pp+1); pre(pp-1); },[pp,album,count]);
 
       if(!has){
         return e('div',{className:'min-h-screen bg-white text-black'},[
@@ -513,7 +474,6 @@
       ]);
     }
 
-    /* ========== 페이지 컴포넌트 ========== */
     function WorkPage({manifest}){
       return e('div',{className:'min-h-screen bg-white text-black'},[
         e(TopNav,{brand:BRAND,items:NAV}),
@@ -528,30 +488,22 @@
       ]);
     }
 
-    /* ========== 앱 루트 ========== */
     function AppShell(){
       const [menuOpen,setMenuOpen]=useState(false);
       const [manifest,setManifest]=useState(null);
       const route=useHashRoute();
 
       useEffect(()=>{ (async()=> setManifest(await loadManifest()))(); },[]);
-      if(!manifest){
-        return e('div',{className:'min-h-screen flex items-center justify-center text-neutral-600'},'Loading…');
-      }
+      if(!manifest){ return e('div',{className:'min-h-screen flex items-center justify-center text-neutral-600'},'Loading…'); }
 
       return e('div',null,[
         !menuOpen && e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}),
         e(InstaFAB,{href:BRAND.instagram}),
         e(SideNav,{open:menuOpen,onClose:()=>setMenuOpen(false),brand:BRAND,items:NAV}),
-
         (route.name==='work'
           ? e(WorkPage,{manifest})
           : route.name==='detail'
-            ? e('div',null,[
-                e(TopNav,{brand:BRAND,items:NAV}),
-                e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}),
-                e(Footer)
-              ])
+            ? e('div',null,[ e(TopNav,{brand:BRAND,items:NAV}), e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}), e(Footer) ])
             : e(MainHeroWrapper,{manifest})
         )
       ]);
