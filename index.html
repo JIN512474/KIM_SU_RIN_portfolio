@@ -218,8 +218,8 @@
     function MainHero({manifest}){
       return e('section',{className:'relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden'},[
         e(HeroMosaic,{key:'m',manifest}),
-        <!-- ✅ 클릭 통과 허용 -->
-        e('div',{className:'absolute inset-0 bg-black/35 md:bg-black/15 pointer-events-none'}),
+        /* 모바일은 살짝 밝게(기존 35% → 25%), PC는 그대로 */
+        e('div',{className:'absolute inset-0 bg-black/25 md:bg-black/15 pointer-events-none'}),
         e('div',{className:'relative text-center px-6 hero-txt-shadow',key:'fg'},[
           e('h1',{className:'text-white drop-shadow text-4xl md:text-6xl font-extrabold tracking-tight'},BRAND.name),
           e('div',{className:'mt-3 text-base md:text-xl text-white/90'},'Beauty • Profile • Advertising')
@@ -292,7 +292,7 @@
         e('div',{className:'text-neutral-700 mb-3'},['Email: ', e('a',{className:'underline',href:`mailto:${BRAND.email}`},BRAND.email)]),
         e('div',null,
           e('a',{href:BRAND.instagram,target:'_blank',rel:'noreferrer',className:'inline-flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-neutral-50'},
-            e('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'currentColor'},e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"})),
+            e('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'currentColor'},e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zM18 6a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"})),
             'Instagram'
           )
         )
