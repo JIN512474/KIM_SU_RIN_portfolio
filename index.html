@@ -195,7 +195,7 @@
       );
     }
 
-    /* ===== 히어로 모자이크: “초기 3칸”으로 줄여 체감 ↑ ===== */
+    /* ===== 히어로 모자이크: 모바일 4 / 데스크톱 6 ===== */
     function useIsMobile(){
       const [m,setM]=useState(window.matchMedia("(max-width: 767.98px)").matches);
       useEffect(()=>{
@@ -208,7 +208,7 @@
     }
     function HeroMosaic({manifest}){
       const isMobile = useIsMobile();
-      const want = isMobile ? 3 : 3; // 모바일/PC 모두 3장만: 초기 로딩 최소화
+      const want = isMobile ? 4 : 6; // ✅ 원복
       const [tiles,setTiles] = useState(null);
 
       useEffect(()=>{
@@ -231,7 +231,7 @@
       },[isMobile,manifest]);
 
       if(!tiles) return e('div',{className:'absolute inset-0 bg-neutral-200'});
-      const gridClass = 'grid grid-cols-3 gap-2 md:gap-3 p-2 md:p-4';
+      const gridClass = 'grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 p-2 md:p-4'; /* 2x2=4, 3x2=6 */
       const aspectClass = 'aspect-[16/9]';
       return e('div',{className:`absolute inset-0 ${gridClass}`},
         tiles.map((t,i)=>e('button',{
