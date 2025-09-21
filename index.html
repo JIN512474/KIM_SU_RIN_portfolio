@@ -13,11 +13,11 @@
   <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
-  <!-- 첫 프로필 이미지 2장 미리받기(체감 속도 ↑) -->
-  <link rel="preload" as="image" href="Profile/1.jpg" imagesrcset="Profile/1.jpg 1x" imagesizes="(max-width:768px) 100vw, 50vw"/>
-  <link rel="preload" as="image" href="Profile/2.jpg" imagesrcset="Profile/2.jpg 1x" imagesizes="(max-width:768px) 100vw, 50vw"/>
+  <!-- 첫 프로필 2장 프리로드(체감↑) -->
+  <link rel="preload" as="image" href="Profile/1.jpg" imagesizes="(max-width:768px) 100vw, 50vw"/>
+  <link rel="preload" as="image" href="Profile/2.jpg" imagesizes="(max-width:768px) 100vw, 50vw"/>
 
-  <!-- Tailwind / React (Production) -->
+  <!-- Tailwind / React (Prod) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -26,17 +26,16 @@
     html,body,#root{min-height:100%}
     .hero-txt-shadow{text-shadow:0 6px 25px rgba(0,0,0,.35)}
 
-    /* ✅ Work 썸네일 렌더최적화: 화면 밖은 렌더 스킵 */
-    .cv-thumb{
-      content-visibility: auto;      /* offscreen skip */
-      contain: content;              /* 레이아웃/페인트 격리 */
-      contain-intrinsic-size: 160px 284px; /* 9:16 대략치로 자리 예약(점프 방지) */
+    /* 가상 그리드 아이템: 부드러운 스크롤 */
+    .vg-item{
+      position:absolute;
+      will-change: transform;
+      backface-visibility: hidden;
+      contain: content;
     }
 
-    /* iOS momentum scroll 부드럽게 */
-    .scroll-smooth-touch{
-      -webkit-overflow-scrolling: touch;
-    }
+    /* iOS momentum scroll */
+    .scroll-smooth-touch{-webkit-overflow-scrolling:touch}
   </style>
 
   <script>
@@ -52,9 +51,9 @@
   // @ts-nocheck
   (function(){
     const e = React.createElement;
-    const {useState,useEffect} = React;
+    const {useState,useEffect,useRef,useMemo} = React;
 
-    /* ================= 기본 데이터 ================ */
+    /* ========= 기본 데이터 ========= */
     const BRAND = {
       name:"KIM SU RIN",
       email:"rlatnfls125@naver.com",
@@ -71,7 +70,7 @@
     const PROFILE_ROOT  = "Profile";
     const PROFILE_TOTAL = 5;
 
-    /* ============== works.json 로드 (앨범별 장수) ============== */
+    /* ========== works.json 로드 (앨범 장수) ========== */
     async function loadManifest(){
       try{
         const r = await fetch('works.json',{cache:'default'});
@@ -79,7 +78,7 @@
         if (Array.isArray(j.albums)) {
           const map = {};
           for (const it of j.albums) map[String(it.id)] = Number(it.count||0);
-          return map; // {"1":6,"2":4,...}
+          return map;
         }
         return j;
       }catch(e){
@@ -88,7 +87,7 @@
       }
     }
 
-    /* ================== 라우팅 ================== */
+    /* ========== 라우팅 ========== */
     function parseRoute(){
       const h = location.hash || "";
       let m;
@@ -109,17 +108,16 @@
     function navigate(item){
       if(item.route) location.hash = item.route;
       if(item.anchor){
-        // 한 박자 뒤 스크롤
         setTimeout(()=>{
           const el=document.querySelector(item.anchor);
           if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
         },50);
       }
     }
-    const clamp  =(n,min,max)=>Math.max(min,Math.min(max,n));
-    const shuffle =arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+    const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+    const shuffle=arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
 
-    /* ============== 이미지 유틸 (공통) ============== */
+    /* ========== 이미지 베이스 유틸 ========== */
     function AutoImgBase(props){
       const extra = {
         loading: 'lazy',
@@ -127,13 +125,13 @@
         fetchpriority: 'auto',
         onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; }
       };
-      if (!('width' in props))  props.width  = 800;  /* 썸네일은 더 작게 */
-      if (!('height' in props)) props.height = 1420; /* 9:16 근사값 */
+      if (!('width' in props))  props.width  = 800;
+      if (!('height' in props)) props.height = 1420; /* 9:16 근사 */
       if (!('sizes' in props))  props.sizes  = '(max-width:768px) 50vw, 20vw';
       return e('img', Object.assign({}, props, extra));
     }
 
-    /* ============== 공통 UI ============== */
+    /* ========== 공통 UI ========== */
     function InstaFAB({href}){
       return e('a',{href,target:'_blank',rel:'noreferrer',
         className:'fixed right-4 bottom-4 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full bg-black text-white shadow-lg hover:opacity-90',
@@ -183,7 +181,7 @@
       );
     }
 
-    /* ============== 반응형 체크 ============== */
+    /* ========== 반응형 체크 ========== */
     function useIsMobile(){
       const [m,setM]=useState(window.matchMedia("(max-width: 767.98px)").matches);
       useEffect(()=>{
@@ -195,7 +193,7 @@
       return m;
     }
 
-    /* ============== 히어로 모자이크: 모바일 4 / PC 6 ============== */
+    /* ========== 히어로 모자이크 ========== */
     function HeroMosaic({manifest}){
       const isMobile = useIsMobile();
       const want = isMobile ? 4 : 6;
@@ -234,7 +232,7 @@
           e('div',{className:'w-full '+aspectClass},
             e(AutoImgBase,{
               src:t.src, alt:`Work ${t.album}-${t.photo}`,
-              className:'w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]' /* ✅ 모바일 hover scale 제거 */
+              className:'w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]'
             })
           ),
           e('div',{className:'absolute inset-0 bg-black/0 md:group-hover:bg-black/10 transition-colors'})
@@ -242,7 +240,7 @@
       );
     }
 
-    /* ================= 메인 섹션 ================= */
+    /* ========== 메인 섹션 ========== */
     function MainHero({manifest}){
       return e('section',{className:'relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden'},[
         e(HeroMosaic,{key:'m',manifest}),
@@ -299,7 +297,7 @@
       const [idx,setIdx]=useState(1);
       const prev = ()=> setIdx(i=>clamp(i-1,1,PROFILE_TOTAL));
       const next = ()=> setIdx(i=>clamp(i+1,1,PROFILE_TOTAL));
-      useEffect(()=>{ // 다음/이전 프리로드
+      useEffect(()=>{
         const pre = (n)=>{ if(n<1||n>PROFILE_TOTAL) return; const img = new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PROFILE_ROOT}/${n}.jpg`; };
         pre(idx+1); pre(idx-1);
       },[idx]);
@@ -347,48 +345,128 @@
         `© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`);
     }
 
-    /* ============== Work 갤러리 (모바일 스크롤 튕김 개선) ============== */
-    function Thumb({ album }){
-      return e('figure',{
-        className:'cv-thumb overflow-hidden cursor-pointer group',
-        onClick:()=>{location.hash=`#/p/${album}/1`;}
-      },[
-        e('div',{className:'w-full aspect-[9/16] bg-neutral-100'},
-          e(AutoImgBase,{
-            src:`${PHOTOS_ROOT}/${album}/1.jpg`,
-            alt:`Album ${album}`,
-            className:'w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-[1.03]' /* ✅ 모바일 hover scale 제거 */
-          })
-        ),
-        e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${album}`)
-      ]);
+    /* ========== ✅ 가상 그리드 (윈도잉) ========== */
+    function useRafScrollY(){
+      const [y,setY]=useState(window.scrollY||window.pageYOffset||0);
+      const rafRef = useRef(0);
+      useEffect(()=>{
+        const onScroll = ()=>{
+          if(rafRef.current) return;
+          rafRef.current = requestAnimationFrame(()=>{
+            rafRef.current = 0;
+            setY(window.scrollY||window.pageYOffset||0);
+          });
+        };
+        addEventListener('scroll', onScroll, {passive:true});
+        addEventListener('wheel', onScroll, {passive:true});
+        return ()=>{
+          removeEventListener('scroll', onScroll);
+          removeEventListener('wheel', onScroll);
+          if(rafRef.current) cancelAnimationFrame(rafRef.current);
+        };
+      },[]);
+      return y;
     }
+
+    function VirtualGrid({ items, onItemClick, captionHeight=34, gap=16 }){
+      const wrapRef = useRef(null);
+      const [metrics,setMetrics]=useState({w:0, x:0, top:0, cols:2});
+      const scrollY = useRafScrollY();
+
+      // 측정
+      useEffect(()=>{
+        const measure = ()=>{
+          const el = wrapRef.current;
+          if(!el) return;
+          const rect = el.getBoundingClientRect();
+          const w = rect.width;
+          const pageTop = rect.top + (window.scrollY||window.pageYOffset||0);
+          // Tailwind breakpoints와 유사: <640:2, <768:3, <1024:4, >=1024:5
+          const vw = window.innerWidth;
+          const cols = vw < 640 ? 2 : (vw < 768 ? 3 : (vw < 1024 ? 4 : 5));
+          setMetrics({w, x: rect.left, top: pageTop, cols});
+        };
+        measure();
+        const ro = new ResizeObserver(measure);
+        if(wrapRef.current) ro.observe(wrapRef.current);
+        addEventListener('resize', measure);
+        return ()=>{ ro.disconnect(); removeEventListener('resize',measure); };
+      },[]);
+
+      const {w, top, cols} = metrics;
+      const colCount = Math.max(1, cols);
+      const cellW = (w - gap*(colCount-1)) / colCount;
+      const imgH  = cellW * (16/9);
+      const cellH = imgH + captionHeight;
+      const totalRows = Math.ceil(items.length / colCount);
+      const totalH = Math.max(0, totalRows*cellH + (totalRows-1)*gap);
+
+      // 현재 뷰 범위 → 렌더 범위 계산
+      const viewTop = Math.max(0, scrollY - top);
+      const viewH   = window.innerHeight;
+      const firstRow = Math.max(0, Math.floor(viewTop / (cellH + gap)));
+      const rowsInView = Math.ceil(viewH / (cellH + gap)) + 1;
+      const overscan = 2;
+      const startRow = Math.max(0, firstRow - overscan);
+      const endRow   = Math.min(totalRows-1, firstRow + rowsInView + overscan);
+
+      const children = [];
+      for(let r=startRow;r<=endRow;r++){
+        for(let c=0;c<colCount;c++){
+          const idx = r*colCount + c;
+          if(idx >= items.length) break;
+          const item = items[idx];
+          const x = c*(cellW + gap);
+          const y = r*(cellH + gap);
+          children.push(
+            e('figure',{
+              key:item,
+              className:'vg-item overflow-hidden cursor-pointer group',
+              style:{transform:`translate3d(${x}px,${y}px,0px)`, width:cellW+'px', height:cellH+'px'}
+            },[
+              e('div',{className:'w-full', style:{width:'100%', height:imgH+'px', background:'#eee'}},
+                e(AutoImgBase,{
+                  src:`${PHOTOS_ROOT}/${item}/1.jpg`,
+                  alt:`Album ${item}`,
+                  className:'w-full h-full object-cover md:group-hover:scale-[1.03] transition-transform duration-500',
+                })
+              ),
+              e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${item}`)
+            ])
+          );
+        }
+      }
+
+      return e('div',{ref:wrapRef, className:'relative', style:{height: totalH+'px'}}, children);
+    }
+
+    /* ========== Work 갤러리 (VirtualGrid 적용) ========== */
     function WorkGallery({manifest}){
-      const albums = Object.entries(manifest)
+      const albums = useMemo(()=>Object.entries(manifest)
         .map(([k,v])=>({id:Number(k),count:Number(v)}))
         .filter(x=>x.count>0)
-        .sort((a,b)=>a.id-b.id);
+        .sort((a,b)=>a.id-b.id)
+        .map(x=>x.id)
+      ,[manifest]);
 
       return e('section',{id:'work',className:'px-3 md:px-8 py-8 md:py-12 scroll-smooth-touch'},[
         e('div',{className:'mb-6 flex items-baseline justify-between'},[
           e('h2',{className:'text-2xl md:text-4xl font-bold'},'Photography'),
-          e('span',{className:'text-xs text-neutral-500'},'Optimized grid (no IO, content-visibility)')
+          e('span',{className:'text-xs text-neutral-500'},'Virtualized grid')
         ]),
-        e('div',{className:'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'},
-          albums.map(al => e(Thumb,{album:al.id,key:al.id}))
-        )
+        e(VirtualGrid,{items:albums, onItemClick:(al)=>{ location.hash=`#/p/${al}/1`; }})
       ]);
     }
 
-    /* ============== 상세 페이지 (다음/이전 미리받기) ============== */
+    /* ========== 상세 페이지 (prefetch) ========== */
     function PageDetail({album,photo,manifest}){
       const count = Number(manifest[String(album)] || 0);
       const has = (count>0);
       const [pp,setPP]=useState(clamp(photo||1,1,Math.max(1,count)));
 
       useEffect(()=>{ setPP(clamp(photo||1,1,Math.max(1,count))); },[album,photo,count]);
-      useEffect(()=>{ // prefetch
-        const pre = (n)=>{ if(n<1||n>count) return; const img = new Image(); img.decoding='async'; img.loading='eager'; img.src = `${PHOTOS_ROOT}/${album}/${n}.jpg`; };
+      useEffect(()=>{
+        const pre=(n)=>{ if(n<1||n>count) return; const img=new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PHOTOS_ROOT}/${album}/${n}.jpg`; };
         pre(pp+1); pre(pp-1);
       },[pp,album,count]);
 
@@ -435,7 +513,7 @@
       ]);
     }
 
-    /* ================= 페이지 컴포넌트 ================= */
+    /* ========== 페이지 컴포넌트 ========== */
     function WorkPage({manifest}){
       return e('div',{className:'min-h-screen bg-white text-black'},[
         e(TopNav,{brand:BRAND,items:NAV}),
@@ -450,7 +528,7 @@
       ]);
     }
 
-    /* ================= 앱 루트 ================= */
+    /* ========== 앱 루트 ========== */
     function AppShell(){
       const [menuOpen,setMenuOpen]=useState(false);
       const [manifest,setManifest]=useState(null);
@@ -462,9 +540,7 @@
       }
 
       return e('div',null,[
-        /* 모바일: 드로어 닫힘 상태에서만 햄버거 표시(제목 가림 방지) */
         !menuOpen && e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}),
-
         e(InstaFAB,{href:BRAND.instagram}),
         e(SideNav,{open:menuOpen,onClose:()=>setMenuOpen(false),brand:BRAND,items:NAV}),
 
