@@ -25,10 +25,21 @@
   <style>
     html,body,#root{min-height:100%}
     .hero-txt-shadow{text-shadow:0 6px 25px rgba(0,0,0,.35)}
+
+    /* ✅ Work 썸네일 렌더최적화: 화면 밖은 렌더 스킵 */
+    .cv-thumb{
+      content-visibility: auto;      /* offscreen skip */
+      contain: content;              /* 레이아웃/페인트 격리 */
+      contain-intrinsic-size: 160px 284px; /* 9:16 대략치로 자리 예약(점프 방지) */
+    }
+
+    /* iOS momentum scroll 부드럽게 */
+    .scroll-smooth-touch{
+      -webkit-overflow-scrolling: touch;
+    }
   </style>
 
   <script>
-    // 초기 진입 라우트
     if (!location.hash) location.hash = "#/home";
   </script>
 </head>
@@ -41,7 +52,7 @@
   // @ts-nocheck
   (function(){
     const e = React.createElement;
-    const {useState,useEffect,useRef} = React;
+    const {useState,useEffect} = React;
 
     /* ================= 기본 데이터 ================ */
     const BRAND = {
@@ -63,8 +74,7 @@
     /* ============== works.json 로드 (앨범별 장수) ============== */
     async function loadManifest(){
       try{
-        // works.json은 업데이트가 잦지 않으니 기본 캐시 사용 (빠름)
-        const r = await fetch('works.json');
+        const r = await fetch('works.json',{cache:'default'});
         const j = await r.json();
         if (Array.isArray(j.albums)) {
           const map = {};
@@ -91,7 +101,7 @@
       const [r,setR]=useState(parseRoute());
       useEffect(()=>{
         const f=()=>setR(parseRoute());
-        addEventListener("hashchange",f);
+        addEventListener("hashchange",f,{passive:true});
         return ()=>removeEventListener("hashchange",f);
       },[]);
       return r;
@@ -99,6 +109,7 @@
     function navigate(item){
       if(item.route) location.hash = item.route;
       if(item.anchor){
+        // 한 박자 뒤 스크롤
         setTimeout(()=>{
           const el=document.querySelector(item.anchor);
           if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
@@ -108,65 +119,18 @@
     const clamp  =(n,min,max)=>Math.max(min,Math.min(max,n));
     const shuffle =arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
 
-    /* ============== 성능: 오프스크린 지연 로딩 ============== */
-    function useInView(ref, rootMargin='200px'){
-      const [v,setV]=useState(false);
-      useEffect(()=>{
-        if(!ref.current) return;
-        const io = new IntersectionObserver(entries=>{
-          entries.forEach(en=>{ if(en.isIntersecting) setV(true); });
-        },{root:null,rootMargin,threshold:0.01});
-        io.observe(ref.current);
-        return ()=>io.disconnect();
-      },[]);
-      return v;
-    }
-
     /* ============== 이미지 유틸 (공통) ============== */
     function AutoImgBase(props){
       const extra = {
         loading: 'lazy',
         decoding: 'async',
+        fetchpriority: 'auto',
         onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; }
       };
-      // 레이아웃 안정화 + sizes로 네트웍 최적화
-      if (!('width' in props))  props.width  = 1600;
-      if (!('height' in props)) props.height = 900;
-      if (!('sizes' in props))  props.sizes  = '(max-width:768px) 100vw, 50vw';
+      if (!('width' in props))  props.width  = 800;  /* 썸네일은 더 작게 */
+      if (!('height' in props)) props.height = 1420; /* 9:16 근사값 */
+      if (!('sizes' in props))  props.sizes  = '(max-width:768px) 50vw, 20vw';
       return e('img', Object.assign({}, props, extra));
-    }
-    const albumSrc = (album,n)=> `${PHOTOS_ROOT}/${album}/${n}.jpg`;
-
-    /* ============== Profile 빠른 로더(캐시 우선) ============== */
-    function ProfileImg({ index, className, alt, priority=false }) {
-      const primary = `${PROFILE_ROOT}/${index}.jpg`;
-      const fallback = [
-        `${PROFILE_ROOT}/${index}.JPG`,
-        `${PROFILE_ROOT}/${index}.jpeg`,
-        `${PROFILE_ROOT}/${index}.JPEG`,
-        `${PROFILE_ROOT}/${index} .jpg`, // 공백 케이스
-      ];
-      let triedFallback = false;
-      const onErr = (img) => {
-        if (triedFallback) {
-          img.style.opacity = 0.25;
-          img.alt = (alt||'profile') + ' (not found)';
-          return;
-        }
-        triedFallback = true;
-        img.src = fallback[0]; // 1회만 대체
-      };
-      return e('img',{
-        src: primary,
-        alt: alt || `Profile ${index}`,
-        className: (className||'') + ' object-cover',
-        loading: priority ? 'eager' : 'lazy',
-        fetchpriority: priority ? 'high' : 'auto',
-        decoding: 'async',
-        width: 900, height: 1200,
-        sizes: '(max-width:768px) 100vw, 50vw',
-        onError: (ev)=>onErr(ev.currentTarget)
-      });
     }
 
     /* ============== 공통 UI ============== */
@@ -234,7 +198,7 @@
     /* ============== 히어로 모자이크: 모바일 4 / PC 6 ============== */
     function HeroMosaic({manifest}){
       const isMobile = useIsMobile();
-      const want = isMobile ? 4 : 6; // 2열×2행 / 3열×2행
+      const want = isMobile ? 4 : 6;
       const [tiles,setTiles] = useState(null);
 
       useEffect(()=>{
@@ -270,10 +234,10 @@
           e('div',{className:'w-full '+aspectClass},
             e(AutoImgBase,{
               src:t.src, alt:`Work ${t.album}-${t.photo}`,
-              className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]'
+              className:'w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-[1.04]' /* ✅ 모바일 hover scale 제거 */
             })
           ),
-          e('div',{className:'absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors'})
+          e('div',{className:'absolute inset-0 bg-black/0 md:group-hover:bg-black/10 transition-colors'})
         ]))
       );
     }
@@ -306,24 +270,39 @@
         )
       ]);
     }
+    function ProfileImg({ index, className, alt, priority=false }) {
+      const primary = `${PROFILE_ROOT}/${index}.jpg`;
+      const fallback = [
+        `${PROFILE_ROOT}/${index}.JPG`,
+        `${PROFILE_ROOT}/${index}.jpeg`,
+        `${PROFILE_ROOT}/${index}.JPEG`,
+        `${PROFILE_ROOT}/${index} .jpg`,
+      ];
+      let i = 0;
+      const onErr = (img) => {
+        if (i >= fallback.length) { img.style.opacity = 0.25; return; }
+        img.src = fallback[i++];
+      };
+      return e('img',{
+        src: primary,
+        alt: alt || `Profile ${index}`,
+        className: (className||'') + ' object-cover',
+        loading: priority ? 'eager' : 'lazy',
+        fetchpriority: priority ? 'high' : 'auto',
+        decoding: 'async',
+        width: 900, height: 1200,
+        sizes: '(max-width:768px) 100vw, 50vw',
+        onError: (ev)=>onErr(ev.currentTarget)
+      });
+    }
     function ProfileCarousel(){
       const [idx,setIdx]=useState(1);
       const prev = ()=> setIdx(i=>clamp(i-1,1,PROFILE_TOTAL));
       const next = ()=> setIdx(i=>clamp(i+1,1,PROFILE_TOTAL));
-
-      // 다음/이전 선(先)프리페치로 즉시 전환
-      useEffect(()=>{
-        const preload = (n)=>{
-          if(n<1 || n>PROFILE_TOTAL) return;
-          const img = new Image();
-          img.decoding = 'async';
-          img.loading = 'eager';
-          img.src = `${PROFILE_ROOT}/${n}.jpg`;
-        };
-        preload(idx+1);
-        preload(idx-1);
+      useEffect(()=>{ // 다음/이전 프리로드
+        const pre = (n)=>{ if(n<1||n>PROFILE_TOTAL) return; const img = new Image(); img.decoding='async'; img.loading='eager'; img.src=`${PROFILE_ROOT}/${n}.jpg`; };
+        pre(idx+1); pre(idx-1);
       },[idx]);
-
       return e('div',{className:'relative'},[
         e('div',{className:'aspect-[3/4] bg-neutral-100 overflow-hidden rounded-lg'},
           e(ProfileImg,{ index:idx, alt:`Profile ${idx}`, className:'w-full h-full', priority:true })
@@ -368,32 +347,32 @@
         `© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`);
     }
 
-    /* ============== Work 갤러리 ============== */
+    /* ============== Work 갤러리 (모바일 스크롤 튕김 개선) ============== */
     function Thumb({ album }){
-      const ref = useRef(null);
-      const inView = useInView(ref, '300px');
-      return e('figure',{ref,className:'overflow-hidden cursor-pointer group',
-        onClick:()=>{location.hash=`#/p/${album}/1`;}},
-        [
-          e('div',{className:'w-full aspect-[9/16] bg-neutral-100'},
-            inView
-              ? e(AutoImgBase,{src:`${PHOTOS_ROOT}/${album}/1.jpg`,alt:`Album ${album}`,
-                className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]'})
-              : e('div',{className:'w-full h-full'})
-          ),
-          e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${album}`)
-        ]
-      );
+      return e('figure',{
+        className:'cv-thumb overflow-hidden cursor-pointer group',
+        onClick:()=>{location.hash=`#/p/${album}/1`;}
+      },[
+        e('div',{className:'w-full aspect-[9/16] bg-neutral-100'},
+          e(AutoImgBase,{
+            src:`${PHOTOS_ROOT}/${album}/1.jpg`,
+            alt:`Album ${album}`,
+            className:'w-full h-full object-cover transition-transform duration-500 md:group-hover:scale-[1.03]' /* ✅ 모바일 hover scale 제거 */
+          })
+        ),
+        e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${album}`)
+      ]);
     }
     function WorkGallery({manifest}){
       const albums = Object.entries(manifest)
         .map(([k,v])=>({id:Number(k),count:Number(v)}))
         .filter(x=>x.count>0)
         .sort((a,b)=>a.id-b.id);
-      return e('section',{id:'work',className:'px-3 md:px-8 py-8 md:py-12'},[
+
+      return e('section',{id:'work',className:'px-3 md:px-8 py-8 md:py-12 scroll-smooth-touch'},[
         e('div',{className:'mb-6 flex items-baseline justify-between'},[
           e('h2',{className:'text-2xl md:text-4xl font-bold'},'Photography'),
-          e('span',{className:'text-xs text-neutral-500'},'Fast grid (manifest based)')
+          e('span',{className:'text-xs text-neutral-500'},'Optimized grid (no IO, content-visibility)')
         ]),
         e('div',{className:'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'},
           albums.map(al => e(Thumb,{album:al.id,key:al.id}))
@@ -408,18 +387,9 @@
       const [pp,setPP]=useState(clamp(photo||1,1,Math.max(1,count)));
 
       useEffect(()=>{ setPP(clamp(photo||1,1,Math.max(1,count))); },[album,photo,count]);
-
-      // ✅ 다음/이전 사진 미리받기(체감 빠름)
-      useEffect(()=>{
-        const pre = (n)=>{
-          if(n<1 || n>count) return;
-          const img = new Image();
-          img.decoding = 'async';
-          img.loading = 'eager';
-          img.src = `${PHOTOS_ROOT}/${album}/${n}.jpg`;
-        };
-        pre(pp+1);
-        pre(pp-1);
+      useEffect(()=>{ // prefetch
+        const pre = (n)=>{ if(n<1||n>count) return; const img = new Image(); img.decoding='async'; img.loading='eager'; img.src = `${PHOTOS_ROOT}/${album}/${n}.jpg`; };
+        pre(pp+1); pre(pp-1);
       },[pp,album,count]);
 
       if(!has){
@@ -451,7 +421,7 @@
         ]),
         e('div',{className:'relative w-full min-h-[calc(100vh-13rem)] flex items-center justify-center bg-neutral-50'},[
           e(AutoImgBase,{src:`${PHOTOS_ROOT}/${album}/${pp}.jpg`,alt:`Album ${album} - Photo ${pp}`,
-            className:'max-w-full max-h-[82vh] object-contain bg-white'})
+            className:'max-w-full max-h-[82vh] object-contain bg-white', sizes:'(max-width:768px) 100vw, 70vw', width:1600, height:2560 })
         ]),
         e('div',{className:'px-4 pt-4 pb-10 max-w-4xl mx-auto flex flex-col items-center gap-3'},[
           e('div',{className:'flex items-center justify-between w-full gap-2'},[
@@ -473,7 +443,7 @@
         e(Footer)
       ]);
     }
-    function MainPage({manifest}){
+    function MainHeroWrapper({manifest}){
       return e('div',{className:'min-h-screen bg-white text-black'},[
         e(TopNav,{brand:BRAND,items:NAV}),
         e(MainHero,{manifest}), e(MainAbout), e(MainProfile), e(MainContact), e(Footer)
@@ -492,7 +462,7 @@
       }
 
       return e('div',null,[
-        /* ✅ 드로어가 닫혀 있을 때만 햄버거 버튼 노출 (모바일에서 제목 가림 방지) */
+        /* 모바일: 드로어 닫힘 상태에서만 햄버거 표시(제목 가림 방지) */
         !menuOpen && e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}),
 
         e(InstaFAB,{href:BRAND.instagram}),
@@ -506,7 +476,7 @@
                 e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}),
                 e(Footer)
               ])
-            : e(MainPage,{manifest})
+            : e(MainHeroWrapper,{manifest})
         )
       ]);
     }
