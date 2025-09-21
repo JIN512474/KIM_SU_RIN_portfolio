@@ -3,465 +3,442 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>KIM SU RIN — Portfolio (Fast)</title>
+  <title>KIM SU RIN — Portfolio</title>
 
-  <!-- HTML은 항상 최신 -->
+  <!-- HTML은 최신, 정적 이미지는 캐시 -->
   <meta http-equiv="Cache-Control" content="no-store, must-revalidate"/>
 
   <!-- 리소스 힌트 -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <!-- 첫 프로필 이미지 미리받기(체감 속도↑). 파일명이 다르면 지우거나 맞춰주세요. -->
+  <link rel="preload" as="image" href="Profile/1.jpg"/>
 
-  <!-- 1x1 파비콘 -->
+  <!-- 파비콘 (404 방지) -->
   <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4DwQACQEBt7q1Xc8AAAAASUVORK5CYII="/>
 
-  <!-- Tailwind (CDN) -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- 부트로그: HEAD 큐 -->
-  <script>
-    (function () {
-      var q = [];
-      window.__bootQueue = q;
-      window.__setBoot = function (msg) { q.push(String(msg)); };
-      __setBoot('Boot: head loaded');
-    })();
-  </script>
-
-  <!-- React UMD (prod) -->
-  <script>
-    __setBoot('Boot: loading React (prod)');
-  </script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"
-          onload="__setBoot('Boot: React loaded (prod)')"
-          onerror="__setBoot('Error: React CDN blocked')"></script>
-  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"
-          onload="__setBoot('Boot: ReactDOM loaded (prod)')"
-          onerror="__setBoot('Error: ReactDOM CDN blocked')"></script>
+  <!-- React UMD (Production) -->
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
 
   <style>
     html,body,#root{min-height:100%}
-    .dbg{position:fixed;left:50%;transform:translateX(-50%);top:52px;background:#000;color:#fff;font-size:11px;padding:4px 8px;border-radius:6px;z-index:50;opacity:.9}
     .hero-txt-shadow{text-shadow:0 6px 25px rgba(0,0,0,.35)}
   </style>
 
   <script>
-    if(!location.hash){ location.hash = "#/home"; }
+    if (!location.hash) location.hash = "#/home";
   </script>
 </head>
 <body class="bg-white text-black">
   <div id="root"></div>
 
-  <!-- 부트로그 본체 -->
-  <script>
-    (function () {
-      try {
-        var el = document.createElement('div');
-        el.id = '__bootlog';
-        el.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:10px;z-index:9999;background:#111;color:#fff;font-size:12px;padding:6px 10px;border-radius:8px;opacity:.95';
-        el.textContent = 'Boot: body ready';
-        document.body.appendChild(el);
-        window.__setBoot = function (msg) {
-          var n = document.getElementById('__bootlog');
-          if (n) n.textContent = String(msg);
-        };
-        if (Array.isArray(window.__bootQueue) && window.__bootQueue.length) {
-          window.__setBoot(window.__bootQueue[window.__bootQueue.length - 1]);
-        }
-      } catch (e) { console.error('bootlog install error', e); }
-    })();
-  </script>
-
-  <!-- 앱 -->
   <script>
   /* eslint-env browser */
   /* global React, ReactDOM */
   // @ts-nocheck
-  try {
-    __setBoot('Boot: starting app');
+  (function(){
+    const e = React.createElement;
+    const {useState,useEffect,useRef} = React;
 
-    (function(){
-      const e = React.createElement;
-      const {useState,useEffect,useRef} = React;
+    /* ===== 기본 데이터 ===== */
+    const BRAND = { name:"KIM SU RIN", email:"rlatnfls125@naver.com", instagram:"https://www.instagram.com/rinrin_soo/", location:"Seoul, KR" };
+    const NAV = [
+      { key:"work",    label:"Work",    route:"#/work", anchor:null },
+      { key:"profile", label:"Profile", route:"#/home", anchor:"#profile" },
+      { key:"about",   label:"About",   route:"#/home", anchor:"#about" },
+      { key:"contact", label:"Contact", route:"#/home", anchor:"#contact" }
+    ];
+    const PHOTOS_ROOT   = "Photos";
+    const PROFILE_ROOT  = "Profile";
+    const PROFILE_TOTAL = 5; // Profile/1~5
+    const PROFILE_FALLBACK_EXTS = ["jpg","JPG","jpeg","JPEG"];
 
-      /* ===== 상수/데이터 ===== */
-      const BRAND = { name:"KIM SU RIN", email:"rlatnfls125@naver.com", instagram:"https://www.instagram.com/rinrin_soo/", location:"Seoul, KR" };
-      const NAV = [
-        { key:"work",    label:"Work",    route:"#/work", anchor:null },
-        { key:"profile", label:"Profile", route:"#/home", anchor:"#profile" },
-        { key:"about",   label:"About",   route:"#/home", anchor:"#about" },
-        { key:"contact", label:"Contact", route:"#/home", anchor:"#contact" }
-      ];
-      const PHOTOS_ROOT = "Photos";
-      const PROFILE_ROOT = "Profile";
-      const PROFILE_VERSION = "v7"; // 캐시버전
+    /* ===== works.json (필수: 앨범별 장수) ===== */
+    async function loadManifest(){
+      try{
+        const r = await fetch('works.json?cb=' + Date.now(), { cache:'no-store' });
+        const j = await r.json();
+        if (Array.isArray(j.albums)) {
+          const map = {}; for (const it of j.albums) map[String(it.id)] = Number(it.count||0);
+          return map;
+        }
+        return j;
+      }catch(e){
+        console.error('works.json load failed', e);
+        return {};
+      }
+    }
 
-      /* ===== 매니페스트 로드 (works.json) ===== */
-      async function loadManifest(){
-        try{
-          const r = await fetch('works.json?cb='+Date.now(), { cache:'no-store' });
-          const j = await r.json();
-          // 두 포맷 모두 지원
-          if (Array.isArray(j.albums)) {
-            const map = {};
-            for (const it of j.albums) map[String(it.id)] = Number(it.count||0);
-            return map;
+    /* ===== 라우팅 ===== */
+    function parseRoute(){
+      const h = location.hash || "";
+      let m;
+      if((m=h.match(/^#\/p\/(\d+)\/(\d+)/))) return {name:"detail",album:+m[1],photo:+m[2]};
+      if((m=h.match(/^#\/p\/(\d+)/)))        return {name:"detail",album:+m[1],photo:1};
+      if(h.startsWith("#/work"))             return {name:"work"};
+      return {name:"home"};
+    }
+    function useHashRoute(){
+      const [r,setR]=useState(parseRoute());
+      useEffect(()=>{
+        const f=()=>setR(parseRoute());
+        addEventListener("hashchange",f);
+        return ()=>removeEventListener("hashchange",f);
+      },[]);
+      return r;
+    }
+    function navigate(item){
+      if(item.route) location.hash = item.route;
+      if(item.anchor){
+        setTimeout(()=>{ const el=document.querySelector(item.anchor); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); },50);
+      }
+    }
+    const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+    const shuffle = (arr)=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+
+    /* ===== 성능: 오프스크린 지연 ===== */
+    function useInView(ref, rootMargin='200px'){
+      const [v,setV]=useState(false);
+      useEffect(()=>{
+        if(!ref.current) return;
+        const io = new IntersectionObserver(entries=>{
+          entries.forEach(en=>{ if(en.isIntersecting) setV(true); });
+        },{root:null,rootMargin,threshold:0.01});
+        io.observe(ref.current);
+        return ()=>io.disconnect();
+      },[]);
+      return v;
+    }
+
+    /* ===== 이미지 유틸 ===== */
+    function AutoImgBase(props){
+      const extra = {
+        loading: 'lazy',
+        decoding: 'async',
+        onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; },
+      };
+      if (!('width' in props))  props.width  = 900;
+      if (!('height' in props)) props.height = 1600;
+      return e('img', Object.assign({}, props, extra));
+    }
+    const albumSrc   = (album,n)=> `${PHOTOS_ROOT}/${album}/${n}.jpg`;
+    const profileSrc = (n)=> `${PROFILE_ROOT}/${n}.jpg`;
+
+    /* ===== Profile 전용 로더: 실패 시 후보 자동 시도(공백/대소문자) ===== */
+    function ProfileImg({ index, className, alt }) {
+      const cands = [];
+      cands.push(`${PROFILE_ROOT}/${index}.jpg`);
+      for (const ext of PROFILE_FALLBACK_EXTS) {
+        cands.push(`${PROFILE_ROOT}/${index}.${ext}`);
+        cands.push(`${PROFILE_ROOT}/${index} .${ext}`);
+        cands.push(`${PROFILE_ROOT}/${encodeURIComponent(index + "." + ext)}`);
+      }
+      let cur = 0;
+      const onErr = (img)=>{
+        cur++;
+        if (cur < cands.length) {
+          img.src = cands[cur] + `?v=${Date.now()}`;
+        } else {
+          img.style.opacity = 0.25;
+          img.alt = (alt||'profile') + ' (not found)';
+        }
+      };
+      return e('img',{
+        src: cands[0] + `?v=${Date.now()}`,
+        alt: alt || `Profile ${index}`,
+        className: (className||'') + ' object-cover',
+        loading: 'lazy',
+        decoding: 'async',
+        onError: (ev)=>onErr(ev.currentTarget),
+        width: 900, height: 1200
+      });
+    }
+
+    /* ===== 공통 UI ===== */
+    function InstaFAB({href}){
+      return e('a',{href,target:'_blank',rel:'noreferrer',className:'fixed right-4 bottom-4 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full bg-black text-white shadow-lg hover:opacity-90',title:'Instagram','aria-label':'Instagram'},
+        e('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'currentColor'},e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 7a5 5 0 1 1 0 10 5 5 0 0 0 0-10z"}))
+      );
+    }
+    function DrawerTrigger({onClick}){
+      return e('button',{onClick,onKeyDown:(ev)=>{if(ev.key==='Enter'||ev.key===' '){onClick&&onClick();}},className:'fixed left-3 top-3 z-50 md:hidden w-10 h-10 rounded-full bg-white/85 backdrop-blur border border-neutral-200 flex items-center justify-center','aria-label':'Open menu'},
+        e('div',{className:'space-y-1.5'},[ e('span',{className:'block w-5 h-0.5 bg-black',key:1}), e('span',{className:'block w-5 h-0.5 bg-black',key:2}), e('span',{className:'block w-5 h-0.5 bg-black',key:3}) ])
+      );
+    }
+    function SideNav({open,onClose,brand,items}){
+      return e('div',{className:`fixed inset-0 z-50 md:hidden ${open?'':'pointer-events-none'}`},[
+        e('div',{key:'ov',onClick:onClose,className:`absolute inset-0 bg-black/40 transition-opacity ${open?'opacity-100':'opacity-0'}`}),
+        e('aside',{key:'as',className:`absolute left-0 top-0 bottom-0 w-64 bg-white transition-transform ${open?'translate-x-0':'-translate-x-full'}`},[
+          e('div',{className:'p-4 border-b',key:'hd'},
+            e('button',{onClick:()=>{onClose&&onClose();location.hash="#/home";window.scrollTo({top:0,behavior:'smooth'});},className:'text-lg font-bold tracking-tight hover:opacity-70'},brand.name)
+          ),
+          e('nav',{className:'p-2 space-y-1',key:'nv'},
+            items.map(it=>e('button',{key:it.key,onClick:()=>{onClose&&onClose();navigate(it);},className:'w-full text-left px-3 py-2 rounded-md text-black hover:bg-neutral-100'},it.label))
+            .concat([ e('a',{key:'insta',href:brand.instagram,target:'_blank',rel:'noreferrer',className:'block px-3 py-2 text-left rounded-md hover:bg-neutral-100'},"Instagram ↗") ])
+          )
+        ])
+      ]);
+    }
+    function TopNav({brand,items}){
+      return e('header',{className:'hidden md:block sticky top-0 z-50 bg-white/80 backdrop-blur border-b'},
+        e('div',{className:'max-w-6xl mx-auto px-6 h-14 flex items-center justify-between'},[
+          e('button',{key:'brand',onClick:()=>{location.hash="#/home";window.scrollTo({top:0,behavior:'smooth'});},className:'font-bold tracking-tight hover:opacity-70'},brand.name),
+          e('nav',{key:'nav',className:'flex items-center gap-6'},
+            items.map(it=>e('button',{key:it.key,className:'hover:opacity-70',onClick:()=>navigate(it)},it.label))
+            .concat([ e('a',{key:'i',className:'hover:opacity-70',href:brand.instagram,target:'_blank',rel:'noreferrer'},'Instagram') ])
+          )
+        ])
+      );
+    }
+
+    /* ===== 히어로 모자이크: “초기 3칸”으로 줄여 체감 ↑ ===== */
+    function useIsMobile(){
+      const [m,setM]=useState(window.matchMedia("(max-width: 767.98px)").matches);
+      useEffect(()=>{
+        const mm=window.matchMedia("(max-width: 767.98px)");
+        const h=(ev)=>setM(ev.matches);
+        mm.addEventListener("change",h);
+        return ()=>mm.removeEventListener("change",h);
+      },[]);
+      return m;
+    }
+    function HeroMosaic({manifest}){
+      const isMobile = useIsMobile();
+      const want = isMobile ? 3 : 3; // 모바일/PC 모두 3장만: 초기 로딩 최소화
+      const [tiles,setTiles] = useState(null);
+
+      useEffect(()=>{
+        let alive=true;
+        (async()=>{
+          const entries = Object.entries(manifest).map(([k,v])=>({album:Number(k),count:Number(v)}))
+            .filter(x=>x.count>0);
+          const pool = shuffle(entries);
+          const imgs=[];
+          let i=0;
+          while(imgs.length<want && i<pool.length){
+            const {album,count} = pool[i++];
+            const p = 1 + Math.floor(Math.random()*count);
+            imgs.push({album,photo:p,src:albumSrc(album,p)});
           }
-          return j; // {"1": 6, "2": 4, ...}
-        }catch(e){
-          console.error(e);
-          return {}; // 실패 시 빈 맵
-        }
-      }
+          if(!alive) return;
+          setTiles(imgs);
+        })();
+        return ()=>{alive=false};
+      },[isMobile,manifest]);
 
-      /* ===== 라우팅 ===== */
-      function parseRoute(){
-        const h = location.hash || "";
-        let m;
-        if((m=h.match(/^#\/p\/(\d+)\/(\d+)/))) return {name:"detail",album:+m[1],photo:+m[2]};
-        if((m=h.match(/^#\/p\/(\d+)/)))        return {name:"detail",album:+m[1],photo:1};
-        if(h.startsWith("#/work"))             return {name:"work"};
-        return {name:"home"};
-      }
-      function useHashRoute(){
-        const [r,setR]=useState(parseRoute());
-        useEffect(()=>{
-          const f=()=>setR(parseRoute());
-          addEventListener("hashchange",f);
-          return ()=>removeEventListener("hashchange",f);
-        },[]);
-        return r;
-      }
-      function navigate(item){
-        if(item.route) location.hash = item.route;
-        if(item.anchor){
-          setTimeout(()=>{ const el=document.querySelector(item.anchor); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); },50);
-        }
-      }
-      const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
-      const shuffle = (arr)=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+      if(!tiles) return e('div',{className:'absolute inset-0 bg-neutral-200'});
+      const gridClass = 'grid grid-cols-3 gap-2 md:gap-3 p-2 md:p-4';
+      const aspectClass = 'aspect-[16/9]';
+      return e('div',{className:`absolute inset-0 ${gridClass}`},
+        tiles.map((t,i)=>e('button',{
+          key:i, onClick:()=>{ location.hash=`#/p/${t.album}/${t.photo}`; },
+          className:'relative w-full overflow-hidden group rounded-md'
+        },[
+          e('div',{className:'w-full '+aspectClass},
+            e(AutoImgBase,{
+              src:t.src, alt:`Work ${t.album}-${t.photo}`,
+              className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]',
+              width:1600, height:900
+            })
+          ),
+          e('div',{className:'absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors'})
+        ]))
+      );
+    }
 
-      /* ===== 성능 유틸 ===== */
-      function useInView(ref, rootMargin='200px'){
-        const [v,setV]=useState(false);
-        useEffect(()=>{
-          if(!ref.current) return;
-          const io = new IntersectionObserver(entries=>{
-            entries.forEach(en=>{ if(en.isIntersecting) setV(true); });
-          },{root:null,rootMargin,threshold:0.01});
-          io.observe(ref.current);
-          return ()=>io.disconnect();
-        },[]);
-        return v;
-      }
-
-      /* ===== 이미지 컴포넌트 (프로빙 없음) ===== */
-      function AutoImgBase(props){
-        const extra = {
-          loading: 'lazy',
-          decoding: 'async',
-          onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; }
-        };
-        if (!('width' in props))  props.width  = 900;   // 9:16 기본 힌트
-        if (!('height' in props)) props.height = 1600;
-        return e('img', Object.assign({}, props, extra));
-      }
-      const albumSrc = (album,n)=> `${PHOTOS_ROOT}/${album}/${n}.jpg`;
-      const profileSrc = (n)=> `${PROFILE_ROOT}/${n}.jpg?v=${encodeURIComponent(PROFILE_VERSION)}`;
-
-      /* ===== 공통 UI ===== */
-      function InstaFAB({href}){
-        return e('a',{href,target:'_blank',rel:'noreferrer',className:'fixed right-4 bottom-4 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full bg-black text-white shadow-lg hover:opacity-90',title:'Instagram','aria-label':'Instagram'},
-          e('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'currentColor'},e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 7a5 5 0 1 1 0 10 5 5 0 0 0 0-10z"}))
-        );
-      }
-      function DrawerTrigger({onClick}){
-        return e('button',{onClick,onKeyDown:(ev)=>{if(ev.key==='Enter'||ev.key===' '){onClick&&onClick();}},className:'fixed left-3 top-3 z-50 md:hidden w-10 h-10 rounded-full bg-white/85 backdrop-blur border border-neutral-200 flex items-center justify-center','aria-label':'Open menu'},
-          e('div',{className:'space-y-1.5'},[ e('span',{className:'block w-5 h-0.5 bg-black',key:1}), e('span',{className:'block w-5 h-0.5 bg-black',key:2}), e('span',{className:'block w-5 h-0.5 bg-black',key:3}) ])
-        );
-      }
-      function SideNav({open,onClose,brand,items}){
-        return e('div',{className:`fixed inset-0 z-50 md:hidden ${open?'':'pointer-events-none'}`},[
-          e('div',{key:'ov',onClick:onClose,className:`absolute inset-0 bg-black/40 transition-opacity ${open?'opacity-100':'opacity-0'}`}),
-          e('aside',{key:'as',className:`absolute left-0 top-0 bottom-0 w-64 bg-white transition-transform ${open?'translate-x-0':'-translate-x-full'}`},[
-            e('div',{className:'p-4 border-b',key:'hd'},
-              e('button',{onClick:()=>{onClose&&onClose();location.hash="#/home";window.scrollTo({top:0,behavior:'smooth'});},className:'text-lg font-bold tracking-tight hover:opacity-70'},brand.name)
-            ),
-            e('nav',{className:'p-2 space-y-1',key:'nv'},
-              items.map(it=>e('button',{key:it.key,onClick:()=>{onClose&&onClose();navigate(it);},className:'w-full text-left px-3 py-2 rounded-md text-black hover:bg-neutral-100'},it.label))
-              .concat([ e('a',{key:'insta',href:brand.instagram,target:'_blank',rel:'noreferrer',className:'block px-3 py-2 text-left rounded-md hover:bg-neutral-100'},"Instagram ↗") ])
-            )
-          ])
-        ]);
-      }
-      function TopNav({brand,items}){
-        return e('header',{className:'hidden md:block sticky top-0 z-50 bg-white/80 backdrop-blur border-b'},
-          e('div',{className:'max-w-6xl mx-auto px-6 h-14 flex items-center justify-between'},[
-            e('button',{key:'brand',onClick:()=>{location.hash="#/home";window.scrollTo({top:0,behavior:'smooth'});},className:'font-bold tracking-tight hover:opacity-70'},brand.name),
-            e('nav',{key:'nav',className:'flex items-center gap-6'},
-              items.map(it=>e('button',{key:it.key,className:'hover:opacity-70',onClick:()=>navigate(it)},it.label))
-              .concat([ e('a',{key:'i',className:'hover:opacity-70',href:brand.instagram,target:'_blank',rel:'noreferrer'},'Instagram') ])
-            )
-          ])
-        );
-      }
-
-      /* ===== 히어로 모자이크 ===== */
-      function useIsMobile(){
-        const [m,setM]=useState(window.matchMedia("(max-width: 767.98px)").matches);
-        useEffect(()=>{
-          const mm=window.matchMedia("(max-width: 767.98px)");
-          const h=(ev)=>setM(ev.matches);
-          mm.addEventListener("change",h);
-          return ()=>mm.removeEventListener("change",h);
-        },[]);
-        return m;
-      }
-      function HeroMosaic({manifest}){
-        const isMobile = useIsMobile();
-        const want = isMobile ? 4 : 6;
-        const [tiles,setTiles] = useState(null);
-
-        useEffect(()=>{
-          let alive=true;
-          (async()=>{
-            // manifest 기반으로만 선택 (네트워크 히트 0)
-            const entries = Object.entries(manifest).map(([k,v])=>({album:Number(k),count:Number(v)}))
-              .filter(x=>x.count>0);
-            const pool = shuffle(entries);
-            const imgs=[];
-            let i=0;
-            while(imgs.length<want && i<pool.length){
-              const {album,count} = pool[i++];
-              const p = 1 + Math.floor(Math.random()*count);
-              imgs.push({album,photo:p,src:albumSrc(album,p)});
-            }
-            if(!alive) return;
-            setTiles(imgs);
-          })();
-          return ()=>{alive=false};
-        },[isMobile,manifest]);
-
-        if(!tiles) return e('div',{className:'absolute inset-0 bg-neutral-200'});
-        const gridClass = isMobile ? 'grid grid-cols-2 gap-2 p-2' : 'grid grid-cols-3 gap-3 p-4';
-        const aspectClass = isMobile ? 'aspect-[9/16]' : 'aspect-[16/9]';
-        const imgClass = isMobile
-          ? 'w-full h-full object-cover object-[50%_7%] md:object-[50%_10%] lg:object-[50%_12%]'
-          : 'w-full h-full object-cover object-center';
-
-        return e('div',{className:`absolute inset-0 ${gridClass}`},
-          tiles.map((t,i)=>e('button',{
-            key:i, onClick:()=>{ location.hash=`#/p/${t.album}/${t.photo}`; },
-            className:'relative w-full overflow-hidden group rounded-md'
-          },[
-            e('div',{className:'w-full '+aspectClass},
-              e(AutoImgBase,{src:t.src,alt:`Work ${t.album}-${t.photo}`,className:imgClass+' transition-transform duration-500 group-hover:scale-[1.04]'})
-            ),
-            e('div',{className:'absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors'})
+    /* ===== 메인 섹션 ===== */
+    function MainHero({manifest}){
+      return e('section',{className:'relative h-[60vh] md:h-[70vh] flex items-center justify-center overflow-hidden'},[
+        e(HeroMosaic,{key:'m',manifest}),
+        e('div',{className:'relative text-center px-6 hero-txt-shadow',key:'fg'},[
+          e('h1',{className:'text-white drop-shadow text-4xl md:text-6xl font-extrabold tracking-tight'},BRAND.name),
+          e('div',{className:'mt-3 text-base md:text-xl text-white/90'},'Beauty • Profile • Advertising')
+        ])
+      ]);
+    }
+    function MainAbout(){
+      const stats=[
+        {k:'Height',v:'170cm'},
+        {k:'Bust',v:'34in'},
+        {k:'Waist',v:'26in'},
+        {k:'Hips',v:'35in'},
+        {k:'Shoes',v:'250mm'}
+      ];
+      return e('section',{id:'about',className:'max-w-6xl mx-auto px-6 py-12 md:py-16'},[
+        e('h2',{className:'text-2xl md:text-3xl font-bold'},"About"),
+        e('div',{className:'mt-6 grid grid-cols-2 md:grid-cols-5 gap-4'},
+          stats.map((s,i)=>e('div',{key:i,className:'border rounded-lg px-3 py-3 text-sm'},[
+            e('div',{className:'text-neutral-500'},s.k), e('div',{className:'font-semibold'},s.v)
           ]))
-        );
-      }
-
-      /* ===== 메인 섹션 ===== */
-      function MainHero({manifest}){
-        return e('section',{className:'relative h-[70vh] md:h-[80vh] flex items-center justify-center overflow-hidden'},[
-          e(HeroMosaic,{key:'m',manifest}),
-          e('div',{className:'relative text-center px-6 hero-txt-shadow',key:'fg'},[
-            e('h1',{className:'text-white drop-shadow text-4xl md:text-6xl font-extrabold tracking-tight'},BRAND.name),
-            e('div',{className:'mt-3 text-base md:text-xl text-white/90'},'Beauty • Profile • Advertising')
+        )
+      ]);
+    }
+    function ProfileCarousel(){
+      const [idx,setIdx]=useState(1);
+      const prev = ()=> setIdx(i=>clamp(i-1,1,PROFILE_TOTAL));
+      const next = ()=> setIdx(i=>clamp(i+1,1,PROFILE_TOTAL));
+      return e('div',{className:'relative'},[
+        e('div',{className:'aspect-[3/4] bg-neutral-100 overflow-hidden rounded-lg'},
+          e(ProfileImg,{ index:idx, alt:`Profile ${idx}`, className:'w-full h-full' })
+        ),
+        e('div',{className:'mt-3 flex items-center justify-center gap-3'},[
+          e('button',{onClick:prev,disabled:idx<=1,className:'px-3 py-1.5 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'Prev'),
+          e('div',{className:'text-sm text-neutral-600'},`${idx} / ${PROFILE_TOTAL}`),
+          e('button',{onClick:next,disabled:idx>=PROFILE_TOTAL,className:'px-3 py-1.5 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'Next')
+        ])
+      ]);
+    }
+    function MainProfile(){
+      return e('section',{id:'profile',className:'max-w-6xl mx-auto px-6 py-12 md:py-16 grid md:grid-cols-2 gap-8 items-center'},[
+        e(ProfileCarousel,{key:'carousel'}),
+        e('div',{key:'txt'},[
+          e('h3',{className:'text-xl font-bold mb-2'},'Profile'),
+          e('div',{className:'text-2xl md:text-3xl font-extrabold tracking-tight mb-3'},BRAND.name),
+          e('ul',{className:'space-y-1 text-sm text-neutral-600'},[
+            e('li',null,['Height: ',e('span',{className:'text-black'},'170cm')]),
+            e('li',null,['Bust: ',e('span',{className:'text-black'},'34in')]),
+            e('li',null,['Waist: ',e('span',{className:'text-black'},'26in')]),
+            e('li',null,['Hips: ',e('span',{className:'text-black'},'35in')]),
+            e('li',null,['Shoes: ',e('span',{className:'text-black'},'250mm')])
           ])
-        ]);
-      }
-      function MainAbout(){
-        const stats=[
-          {k:'Height',v:'170cm'},
-          {k:'Bust',v:'34in'},
-          {k:'Waist',v:'26in'},
-          {k:'Hips',v:'35in'},
-          {k:'Shoes',v:'250mm'}
-        ];
-        return e('section',{id:'about',className:'max-w-6xl mx-auto px-6 py-12 md:py-20'},[
-          e('h2',{className:'text-2xl md:text-3xl font-bold'},"About"),
-          e('div',{className:'mt-6 grid grid-cols-2 md:grid-cols-5 gap-4'},
-            stats.map((s,i)=>e('div',{key:i,className:'border rounded-lg px-3 py-3 text-sm'},[
-              e('div',{className:'text-neutral-500'},s.k), e('div',{className:'font-semibold'},s.v)
-            ]))
+        ])
+      ]);
+    }
+    function MainContact(){
+      return e('section',{id:'contact',className:'max-w-6xl mx-auto px-6 py-12 md:py-16'},[
+        e('h3',{className:'text-xl font-bold mb-2'},'Contact'),
+        e('div',{className:'text-neutral-700 mb-3'},['Email: ', e('a',{className:'underline',href:`mailto:${BRAND.email}`},BRAND.email)]),
+        e('div',null,
+          e('a',{href:BRAND.instagram,target:'_blank',rel:'noreferrer',className:'inline-flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-neutral-50'},
+            e('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'currentColor'},e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"})),
+            'Instagram'
           )
-        ]);
-      }
-      function ProfileCarousel(){
-        const TOTAL = 5;
-        const [idx,setIdx]=useState(1);
-        const prev = ()=> setIdx(i=>clamp(i-1,1,TOTAL));
-        const next = ()=> setIdx(i=>clamp(i+1,1,TOTAL));
-        return e('div',{className:'relative'},[
-          e('div',{className:'aspect-[3/4] bg-neutral-100 overflow-hidden rounded-lg'},
-            e(AutoImgBase,{src:profileSrc(idx),alt:`Profile ${idx}`,className:'w-full h-full object-cover'})
-          ),
-          e('div',{className:'mt-3 flex items-center justify-center gap-3'},[
-            e('button',{onClick:prev,disabled:idx<=1,className:'px-3 py-1.5 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'Prev'),
-            e('div',{className:'text-sm text-neutral-600'},`${idx} / ${TOTAL}`),
-            e('button',{onClick:next,disabled:idx>=TOTAL,className:'px-3 py-1.5 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'Next')
-          ])
-        ]);
-      }
-      function MainProfile(){
-        return e('section',{id:'profile',className:'max-w-6xl mx-auto px-6 py-12 md:py-16 grid md:grid-cols-2 gap-8 items-center'},[
-          e(ProfileCarousel,{key:'carousel'}),
-          e('div',{key:'txt'},[
-            e('h3',{className:'text-xl font-bold mb-2'},'Profile'),
-            e('div',{className:'text-2xl md:text-3xl font-extrabold tracking-tight mb-3'},BRAND.name),
-            e('ul',{className:'space-y-1 text-sm text-neutral-600'},[
-              e('li',null,['Height: ',e('span',{className:'text-black'},'170cm')]),
-              e('li',null,['Bust: ',e('span',{className:'text-black'},'34in')]),
-              e('li',null,['Waist: ',e('span',{className:'text-black'},'26in')]),
-              e('li',null,['Hips: ',e('span',{className:'text-black'},'35in')]),
-              e('li',null,['Shoes: ',e('span',{className:'text-black'},'250mm')])
-            ])
-          ])
-        ]);
-      }
-      function MainContact(){
-        return e('section',{id:'contact',className:'max-w-6xl mx-auto px-6 py-12 md:py-16'},[
-          e('h3',{className:'text-xl font-bold mb-2'},'Contact'),
-          e('div',{className:'text-neutral-700 mb-3'},['Email: ', e('a',{className:'underline',href:`mailto:${BRAND.email}`},BRAND.email)]),
-          e('div',null,
-            e('a',{href:BRAND.instagram,target:'_blank',rel:'noreferrer',className:'inline-flex items-center gap-2 px-4 py-2 border rounded-md hover:bg-neutral-50'},
-              e('svg',{width:18,height:18,viewBox:'0 0 24 24',fill:'currentColor'},e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 4a1 1 0 1 0 0 2 1 1 0 0 0 0-2zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"})),
-              'Instagram'
-            )
-          )
-        ]);
-      }
-      function Footer(){ return e('footer',{className:'border-t py-8 text-center text-sm text-neutral-500'},`© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`); }
+        )
+      ]);
+    }
+    function Footer(){ return e('footer',{className:'border-t py-8 text-center text-sm text-neutral-500'},`© ${new Date().getFullYear()} ${BRAND.name}. All rights reserved.`); }
 
-      /* ===== Work 갤러리 (매니페스트 기반) ===== */
-      function Thumb({ album }){
-        const ref = useRef(null);
-        const inView = useInView(ref, '300px');
-        return e('figure',{ref,className:'overflow-hidden cursor-pointer group',onClick:()=>{location.hash=`#/p/${album}/1`;}},[
-          e('div',{className:'w-full aspect-[9/16] bg-neutral-100'},
-            inView
-              ? e(AutoImgBase,{src:albumSrc(album,1),alt:`Album ${album}`,className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]'})
-              : e('div',{className:'w-full h-full'})
-          ),
-          e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${album}`)
-        ]);
-      }
-      function WorkGallery({manifest}){
-        const albums = Object.entries(manifest).map(([k,v])=>({id:Number(k),count:Number(v)})).filter(x=>x.count>0).sort((a,b)=>a.id-b.id);
-        return e('section',{id:'work',className:'px-3 md:px-8 py-8 md:py-12'},[
-          e('div',{className:'mb-6 flex items-baseline justify-between'},[
-            e('h2',{className:'text-2xl md:text-4xl font-bold'},'Photography'),
-            e('span',{className:'text-xs text-neutral-500'},'Manifest-based grid (no probing)')
-          ]),
-          e('div',{className:'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'},
-            albums.map(al => e(Thumb,{album:al.id,key:al.id}))
-          )
-        ]);
-      }
+    /* ===== Work 갤러리 (manifest 기반) ===== */
+    function Thumb({ album }){
+      const ref = useRef(null);
+      const inView = useInView(ref, '300px');
+      return e('figure',{ref,className:'overflow-hidden cursor-pointer group',onClick:()=>{location.hash=`#/p/${album}/1`;}},[
+        e('div',{className:'w-full aspect-[9/16] bg-neutral-100'},
+          inView
+            ? e(AutoImgBase,{src:albumSrc(album,1),alt:`Album ${album}`,className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]'})
+            : e('div',{className:'w-full h-full'})
+        ),
+        e('figcaption',{className:'px-1.5 py-2 text-sm text-neutral-600'},`Album ${album}`)
+      ]);
+    }
+    function WorkGallery({manifest}){
+      const albums = Object.entries(manifest).map(([k,v])=>({id:Number(k),count:Number(v)})).filter(x=>x.count>0).sort((a,b)=>a.id-b.id);
+      return e('section',{id:'work',className:'px-3 md:px-8 py-8 md:py-12'},[
+        e('div',{className:'mb-6 flex items-baseline justify-between'},[
+          e('h2',{className:'text-2xl md:text-4xl font-bold'},'Photography'),
+          e('span',{className:'text-xs text-neutral-500'},'Fast grid (no probing)')
+        ]),
+        e('div',{className:'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4'},
+          albums.map(al => e(Thumb,{album:al.id,key:al.id}))
+        )
+      ]);
+    }
 
-      /* ===== 상세 페이지 ===== */
-      function PageDetail({album,photo,manifest}){
-        const count = Number(manifest[String(album)] || 0);
-        const has = (count>0);
-        const [pp,setPP]=useState(clamp(photo||1,1,Math.max(1,count)));
-        useEffect(()=>{ setPP(clamp(photo||1,1,Math.max(1,count))); },[album,photo,count]);
-        if(!has){
-          return e('div',{className:'min-h-screen bg-white text-black'},[
-            e(TopNav,{brand:BRAND,items:NAV}),
-            e('div',{className:'max-w-3xl mx-auto p-8 text-center'},[
-              e('p',{className:'text-lg'},"이 앨범에 표시할 이미지가 없습니다."),
-              e('div',{className:'mt-4'}, e('a',{href:'#/work',className:'underline'},"← Work로 돌아가기"))
-            ]),
-            e(Footer)
-          ]);
-        }
-
-        const prevPhoto=()=>{ const n=clamp(pp-1,1,count); location.hash=`#/p/${album}/${n}`; };
-        const nextPhoto=()=>{ const n=clamp(pp+1,1,count); location.hash=`#/p/${album}/${n}`; };
-        const prevAlbum=()=>location.hash=`#/p/${Math.max(1,album-1)}/1`;
-        const nextAlbum=()=>location.hash=`#/p/${album+1}/1`;
-
+    /* ===== 상세 페이지 ===== */
+    function PageDetail({album,photo,manifest}){
+      const count = Number(manifest[String(album)] || 0);
+      const has = (count>0);
+      const [pp,setPP]=useState(clamp(photo||1,1,Math.max(1,count)));
+      useEffect(()=>{ setPP(clamp(photo||1,1,Math.max(1,count))); },[album,photo,count]);
+      if(!has){
         return e('div',{className:'min-h-screen bg-white text-black'},[
-          e('div',{className:'max-w-6xl mx-auto px-4 pt-4 pb-2 flex flex-wrap items-center justify-between gap-3'},[
-            e('div',{className:'text-sm text-neutral-600'},[
-              'Album ', e('span',{className:'font-medium'}, String(album)), ' · Photo ',
-              e('span',{className:'font-medium'}, String(pp)), ' / ', e('span',{className:'font-medium'}, String(count))
-            ]),
-            e('div',{className:'flex items-center gap-2'},[
-              e('button',{onClick:prevAlbum,disabled:album<=1,className:'px-3 py-2 border rounded-md hover:bg-neutral-50 disabled:opacity-40',title:'Prev Album'},'← Prev Album'),
-              e('button',{onClick:nextAlbum,className:'px-3 py-2 border rounded-md hover:bg-neutral-50',title:'Next Album →'},'Next Album →')
-            ])
-          ]),
-          e('div',{className:'relative w-full min-h-[calc(100vh-13rem)] flex items-center justify-center bg-neutral-50'},[
-            e(AutoImgBase,{src:albumSrc(album,pp),alt:`Album ${album} - Photo ${pp}`,className:'max-w-full max-h-[82vh] object-contain bg-white'})
-          ]),
-          e('div',{className:'px-4 pt-4 pb-10 max-w-4xl mx-auto flex flex-col items-center gap-3'},[
-            e('div',{className:'flex items-center justify-between w-full gap-2'},[
-              e('button',{onClick:prevPhoto,disabled:pp<=1,className:'px-4 py-2 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'← Prev Photo'),
-              e('button',{onClick:nextPhoto,disabled:pp>=count,className:'px-4 py-2 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'Next Photo →')
-            ]),
-            e('button',{onClick:nextPhoto,disabled:pp>=count,className:'mt-2 w-full md:w-2/3 lg:w-1/2 h-14 border-2 rounded-lg text-lg font-semibold hover:bg-neutral-50 disabled:opacity-40'}, pp>=count ? '마지막 사진입니다' : '다음 사진 보기')
-          ])
-        ]);
-      }
-
-      /* ===== 페이지 스켈레톤 ===== */
-      function WorkPage({onOpenMenu,manifest}){
-        return e('div',{className:'min-h-screen bg-white text-black'},[
-          e(DrawerTrigger,{onClick:onOpenMenu}),
           e(TopNav,{brand:BRAND,items:NAV}),
-          e(WorkGallery,{manifest}),
+          e('div',{className:'max-w-3xl mx-auto p-8 text-center'},[
+            e('p',{className:'text-lg'},"이 앨범에 표시할 이미지가 없습니다."),
+            e('div',{className:'mt-4'}, e('a',{href:'#/work',className:'underline'},"← Work로 돌아가기"))
+          ]),
           e(Footer)
         ]);
       }
-      function MainPage({onOpenMenu,manifest}){
-        return e('div',{className:'min-h-screen bg-white text-black'},[
-          e(DrawerTrigger,{onClick:onOpenMenu}),
-          e(TopNav,{brand:BRAND,items:NAV}),
-          e(MainHero,{manifest}), e(MainAbout), e(MainProfile), e(MainContact), e(Footer)
-        ]);
+
+      const prevPhoto=()=>{ const n=clamp(pp-1,1,count); location.hash=`#/p/${album}/${n}`; };
+      const nextPhoto=()=>{ const n=clamp(pp+1,1,count); location.hash=`#/p/${album}/${n}`; };
+      const prevAlbum=()=>location.hash=`#/p/${Math.max(1,album-1)}/1`;
+      const nextAlbum=()=>location.hash=`#/p/${album+1}/1`;
+
+      return e('div',{className:'min-h-screen bg-white text-black'},[
+        e('div',{className:'max-w-6xl mx-auto px-4 pt-4 pb-2 flex flex-wrap items-center justify-between gap-3'},[
+          e('div',{className:'text-sm text-neutral-600'},[
+            'Album ', e('span',{className:'font-medium'}, String(album)), ' · Photo ',
+            e('span',{className:'font-medium'}, String(pp)), ' / ', e('span',{className:'font-medium'}, String(count))
+          ]),
+          e('div',{className:'flex items-center gap-2'},[
+            e('button',{onClick:prevAlbum,disabled:album<=1,className:'px-3 py-2 border rounded-md hover:bg-neutral-50 disabled:opacity-40',title:'Prev Album'},'← Prev Album'),
+            e('button',{onClick:nextAlbum,className:'px-3 py-2 border rounded-md hover:bg-neutral-50',title:'Next Album →'},'Next Album →')
+          ])
+        ]),
+        e('div',{className:'relative w-full min-h-[calc(100vh-13rem)] flex items-center justify-center bg-neutral-50'},[
+          e(AutoImgBase,{src:albumSrc(album,pp),alt:`Album ${album} - Photo ${pp}`,className:'max-w-full max-h-[82vh] object-contain bg-white'})
+        ]),
+        e('div',{className:'px-4 pt-4 pb-10 max-w-4xl mx-auto flex flex-col items-center gap-3'},[
+          e('div',{className:'flex items-center justify-between w-full gap-2'},[
+            e('button',{onClick:prevPhoto,disabled:pp<=1,className:'px-4 py-2 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'← Prev Photo'),
+            e('button',{onClick:nextPhoto,disabled:pp>=count,className:'px-4 py-2 border rounded-md hover:bg-neutral-50 disabled:opacity-40'},'Next Photo →')
+          ]),
+          e('button',{onClick:nextPhoto,disabled:pp>=count,className:'mt-2 w-full md:w-2/3 lg:w-1/2 h-14 border-2 rounded-lg text-lg font-semibold hover:bg-neutral-50 disabled:opacity-40'}, pp>=count ? '마지막 사진입니다' : '다음 사진 보기')
+        ])
+      ]);
+    }
+
+    /* ===== 페이지 스켈레톤 ===== */
+    function WorkPage({onOpenMenu,manifest}){
+      return e('div',{className:'min-h-screen bg-white text-black'},[
+        e(DrawerTrigger,{onClick:onOpenMenu}),
+        e(TopNav,{brand:BRAND,items:NAV}),
+        e(WorkGallery,{manifest}),
+        e(Footer)
+      ]);
+    }
+    function MainPage({onOpenMenu,manifest}){
+      return e('div',{className:'min-h-screen bg-white text-black'},[
+        e(DrawerTrigger,{onClick:onOpenMenu}),
+        e(TopNav,{brand:BRAND,items:NAV}),
+        e(MainHero,{manifest}), e(MainAbout), e(MainProfile), e(MainContact), e(Footer)
+      ]);
+    }
+
+    /* ===== App ===== */
+    function AppShell(){
+      const [menuOpen,setMenuOpen]=useState(false);
+      const [manifest,setManifest]=useState(null);
+      const route=useHashRoute();
+
+      useEffect(()=>{
+        (async()=>{ setManifest(await loadManifest()); })();
+      },[]);
+
+      if(!manifest){
+        return e('div',{className:'min-h-screen flex items-center justify-center text-neutral-600'},'Loading…');
       }
 
-      /* ===== App ===== */
-      function AppShell(){
-        const [menuOpen,setMenuOpen]=useState(false);
-        const [manifest,setManifest]=useState(null);
-        const route=useHashRoute();
+      return e('div',null,[
+        e(InstaFAB,{href:BRAND.instagram}),
+        e(SideNav,{open:menuOpen,onClose:()=>setMenuOpen(false),brand:BRAND,items:NAV}),
+        (route.name==='work'
+          ? e(WorkPage,{onOpenMenu:()=>setMenuOpen(true),manifest})
+          : route.name==='detail'
+            ? e('div',null,[ e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}), e(TopNav,{brand:BRAND,items:NAV}), e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}), e(Footer) ])
+            : e(MainPage,{onOpenMenu:()=>setMenuOpen(true),manifest})
+        )
+      ]);
+    }
 
-        useEffect(()=>{
-          (async()=>{
-            __setBoot('Boot: loading works.json');
-            const m = await loadManifest();
-            setManifest(m);
-            __setBoot('Boot: rendered ✓');
-          })();
-        },[]);
-
-        if(!manifest){
-          return e('div',{className:'min-h-screen flex items-center justify-center text-neutral-600'},'Loading…');
-        }
-
-        return e('div',null,[
-          e(InstaFAB,{href:BRAND.instagram}),
-          e(SideNav,{open:menuOpen,onClose:()=>setMenuOpen(false),brand:BRAND,items:NAV}),
-          (route.name==='work'
-            ? e(WorkPage,{onOpenMenu:()=>setMenuOpen(true),manifest})
-            : route.name==='detail'
-              ? e('div',null,[ e(DrawerTrigger,{onClick:()=>setMenuOpen(true)}), e(TopNav,{brand:BRAND,items:NAV}), e(PageDetail,{album:route.album||1,photo:route.photo||1,manifest}), e(Footer) ])
-              : e(MainPage,{onOpenMenu:()=>setMenuOpen(true),manifest})
-          )
-        ]);
-      }
-
-      ReactDOM.createRoot(document.getElementById('root')).render(e(AppShell));
-      __setBoot('Boot: app mounted');
-    })();
-  } catch (err) {
-    console.error(err);
-    __setBoot('Boot error: ' + (err && (err.message || err)));
-  }
+    ReactDOM.createRoot(document.getElementById('root')).render(e(AppShell));
+  })();
   </script>
 </body>
 </html>
