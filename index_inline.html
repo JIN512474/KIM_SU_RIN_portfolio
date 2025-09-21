@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>KIM SU RIN — Inline Minimal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html,body,#root{height:100%}
+    .errbox{white-space:pre-wrap;background:#111;color:#fff;padding:12px;border-radius:8px}
+  </style>
+</head>
+<body class="bg-white text-black">
+  <div id="root" class="min-h-screen"></div>
+  <script type="text/babel">
+    const {useEffect,useState}=React;
+    function Safe({children}) {
+      const [err,setErr]=useState(null);
+      useEffect(()=>{
+        const onerr=(e)=>setErr(e.message||String(e));
+        const onrej=(e)=>setErr((e.reason&&e.reason.message)||String(e.reason));
+        window.addEventListener('error',onerr);
+        window.addEventListener('unhandledrejection',onrej);
+        return ()=>{window.removeEventListener('error',onerr);window.removeEventListener('unhandledrejection',onrej);};
+      },[]);
+      if(err) return <div className="p-4"><h1 className="text-xl font-bold mb-2">오류 발생</h1><div className="errbox">{err}</div></div>;
+      return children;
+    }
+    const enc=(album,n)=>`photos/${album}/${encodeURIComponent(n+' .jpg')}`;
+    function App(){
+      const [route,setRoute]=useState(window.location.hash||"#/home");
+      useEffect(()=>{
+        const f=()=>setRoute(window.location.hash||"#/home");
+        window.addEventListener("hashchange",f);
+        if(!window.location.hash) window.location.hash="#/home";
+        return ()=>window.removeEventListener("hashchange",f);
+      },[]);
+      const goHome=()=>{window.location.hash="#/home";window.scrollTo({top:0,behavior:'smooth'})};
+      let view="home",album=1,photo=1,m; const h=route;
+      if((m=h.match(/^#\/p\/(\d+)\/(\d+)/))){view="detail";album=+m[1];photo=+m[2];}
+      else if((m=h.match(/^#\/p\/(\d+)/))){view="detail";album=+m[1];photo=1;}
+      else if(h.startsWith("#/work")) view="work";
+      return (
+        <Safe>
+          <header className="sticky top-0 z-10 bg-white/90 backdrop-blur border-b">
+            <div className="max-w-6xl mx-auto px-4 h-12 flex items-center justify-between">
+              <button onClick={goHome} className="font-bold hover:opacity-70">KIM SU RIN</button>
+              <nav className="flex gap-4 text-sm">
+                <a className="hover:opacity-70" href="#/work">Work</a>
+                <a className="hover:opacity-70" href="#/home#profile">Profile</a>
+                <a className="hover:opacity-70" href="#/home#about">About</a>
+                <a className="hover:opacity-70" href="#/home#contact">Contact</a>
+              </nav>
+            </div>
+          </header>
+          {view==="home"&&(
+            <main>
+              <section className="relative h-[50vh] flex items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 bg-neutral-200"></div>
+                <div className="relative text-center">
+                  <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">KIM SU RIN</h1>
+                  <p className="mt-2 text-neutral-600">Inline Minimal Build</p>
+                </div>
+              </section>
+            </main>
+          )}
+          {view==="work"&&(
+            <main className="max-w-6xl mx-auto px-4 py-8">
+              <h2 className="text-2xl font-bold mb-4">Work (검증용)</h2>
+              <p className="text-sm text-neutral-600 mb-4">
+                첫 썸네일이 보이면 이미지 경로 OK →
+                <a className="underline ml-1" target="_blank" rel="noreferrer" href={enc(1,1)}>{enc(1,1)}</a>
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Array.from({length:8},(_,i)=>i+1).map(n=>(
+                  <a key={n} href={`#/p/1/${n}`} className="block aspect-[9/16] bg-neutral-100 overflow-hidden">
+                    <img src={enc(1,n)} className="w-full h-full object-cover" alt={`A1-${n}`}
+                      onError={(e)=>{e.currentTarget.style.opacity=0.2; e.currentTarget.parentElement.title="로드 실패: "+enc(1,n);}}/>
+                  </a>
+                ))}
+              </div>
+            </main>
+          )}
+          {view==="detail"&&(
+            <main className="min-h-[70vh] flex flex-col items-center justify-center gap-4 p-4 bg-neutral-50">
+              <div className="text-sm text-neutral-600">Album {album} · Photo {photo}</div>
+              <div className="w-full max-w-5xl">
+                <img src={enc(album,photo)} alt={`A${album}-${photo}`}
+                  className="w-full max-h-[75vh] object-contain bg-white"
+                  onError={(e)=>{e.currentTarget.style.opacity=0.2;e.currentTarget.alt="로드 실패: "+enc(album,photo);}}/>
+              </div>
+              <div className="flex gap-2">
+                <button className="px-3 py-2 border rounded" onClick={()=>{window.location.hash=`#/p/${album}/${Math.max(1,photo-1)}`;}}>← Prev</button>
+                <button className="px-3 py-2 border rounded" onClick={()=>{window.location.hash=`#/p/${album}/${photo+1}`;}}>Next →</button>
+              </div>
+              <div><a className="text-sm underline text-neutral-600" href="#/work">← Back to Work</a></div>
+            </main>
+          )}
+          <footer className="border-t py-8 text-center text-sm text-neutral-500">Inline Minimal — 이게 뜨면 본판 복구합니다.</footer>
+        </Safe>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>

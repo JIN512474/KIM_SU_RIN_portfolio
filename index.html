@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KIM SU RIN — Portfolio</title>
+    <!-- Tailwind (Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React / ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Framer Motion UMD -->
+    <script src="https://unpkg.com/framer-motion/dist/framer-motion.umd.js"></script>
+    <!-- Babel for in-browser JSX (dev only) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      html, body { height: 100%; }
+      body { background: #fff; color: #000; }
+      .no-tap-highlight { -webkit-tap-highlight-color: transparent; }
+    </style>
+  </head>
+  <body class="no-tap-highlight">
+    <div id="root"></div>
+    <!-- Cache-busting query so browser doesn't reuse old app.jsx -->
+    <script type="text/babel" data-presets="react" src="./app.jsx?v=final-polished"></script>
+  </body>
+</html>

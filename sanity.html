@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Sanity</title>
+<body style="font:14px/1.4 -apple-system,system-ui;">
+<h1>Sanity check</h1>
+<ol>
+  <li>이 페이지가 보이면 서버 OK</li>
+  <li><a href="Photos/1/">폴더 리스트(Photos/1/) 열기</a> (목록이 보이면 경로 OK)</li>
+  <li><a href="Photos/1/1.jpg">직접 이미지(Photos/1/1.jpg) 열기</a> (이미지 보이면 파일 OK)</li>
+</ol>
+<p>아래는 직접 임베드한 이미지:</p>
+<img src="Photos/1/1.jpg" alt="Photos/1/1.jpg" style="max-width:300px;border:1px solid #ddd;padding:4px"
+     onerror="this.insertAdjacentHTML('afterend','<div style=color:#c00>❌ 로드실패: '+this.src+'</div>')">
+</body>
