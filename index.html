@@ -52,8 +52,8 @@
       { key:"about",   label:"About",   route:"#/home", anchor:"#about" },
       { key:"contact", label:"Contact", route:"#/home", anchor:"#contact" }
     ];
-    const PHOTOS_ROOT = "Photos";
-    const PROFILE_ROOT = "Profile";
+    const PHOTOS_ROOT   = "Photos";
+    const PROFILE_ROOT  = "Profile";
     const PROFILE_TOTAL = 5;
 
     /* ============== works.json 로드 (앨범별 장수) ============== */
@@ -64,9 +64,9 @@
         if (Array.isArray(j.albums)) {
           const map = {};
           for (const it of j.albums) map[String(it.id)] = Number(it.count||0);
-          return map;
+          return map; // {"1":6,"2":4,...}
         }
-        return j; // { "1": 6, "2": 4, ... } 형태
+        return j;
       }catch(e){
         console.error('works.json load failed', e);
         return {};
@@ -100,8 +100,8 @@
         },50);
       }
     }
-    const clamp =(n,min,max)=>Math.max(min,Math.min(max,n));
-    const shuffle= arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
+    const clamp  =(n,min,max)=>Math.max(min,Math.min(max,n));
+    const shuffle =arr=>arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
 
     /* ============== 성능: 오프스크린 지연 로딩 ============== */
     function useInView(ref, rootMargin='200px'){
@@ -117,18 +117,18 @@
       return v;
     }
 
-    /* ============== 이미지 유틸 ============== */
+    /* ============== 이미지 유틸 (공통) ============== */
     function AutoImgBase(props){
       const extra = {
         loading: 'lazy',
         decoding: 'async',
         onError: (ev)=>{ ev.currentTarget.style.opacity = 0.25; }
       };
-      if (!('width' in props))  props.width  = 1200;
-      if (!('height' in props)) props.height = 1800;
+      if (!('width' in props))  props.width  = 1600;
+      if (!('height' in props)) props.height = 900;
       return e('img', Object.assign({}, props, extra));
     }
-    const albumSrc   = (album,n)=> `${PHOTOS_ROOT}/${album}/${n}.jpg`;
+    const albumSrc = (album,n)=> `${PHOTOS_ROOT}/${album}/${n}.jpg`;
 
     /* ============== Profile 빠른 로더(캐시 우선) ============== */
     function ProfileImg({ index, className, alt, priority=false }) {
@@ -167,7 +167,7 @@
         className:'fixed right-4 bottom-4 z-50 inline-flex items-center justify-center w-12 h-12 rounded-full bg-black text-white shadow-lg hover:opacity-90',
         title:'Instagram','aria-label':'Instagram'},
         e('svg',{width:22,height:22,viewBox:'0 0 24 24',fill:'currentColor'},
-          e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 7a5 5 0 1 1 0 10 5 5 0 0 0 0-10z"}))
+          e('path',{d:"M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm11 2a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10z"}))
       );
     }
     function DrawerTrigger({onClick}){
@@ -241,7 +241,7 @@
           while(imgs.length<want && i<pool.length){
             const {album,count} = pool[i++];
             const p = 1 + Math.floor(Math.random()*count);
-            imgs.push({album,photo:p,src:albumSrc(album,p)});
+            imgs.push({album,photo:p,src:`${PHOTOS_ROOT}/${album}/${p}.jpg`});
           }
           if(!alive) return;
           setTiles(imgs);
@@ -251,7 +251,7 @@
 
       if(!tiles) return e('div',{className:'absolute inset-0 bg-neutral-200'});
 
-      const gridClass = 'grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 p-2 md:p-4';
+      const gridClass   = 'grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 p-2 md:p-4';
       const aspectClass = 'aspect-[16/9]';
 
       return e('div',{className:`absolute inset-0 ${gridClass}`},
@@ -262,8 +262,7 @@
           e('div',{className:'w-full '+aspectClass},
             e(AutoImgBase,{
               src:t.src, alt:`Work ${t.album}-${t.photo}`,
-              className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]',
-              width:1600, height:900
+              className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]'
             })
           ),
           e('div',{className:'absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors'})
@@ -370,7 +369,7 @@
         [
           e('div',{className:'w-full aspect-[9/16] bg-neutral-100'},
             inView
-              ? e(AutoImgBase,{src:albumSrc(album,1),alt:`Album ${album}`,
+              ? e(AutoImgBase,{src:`${PHOTOS_ROOT}/${album}/1.jpg`,alt:`Album ${album}`,
                 className:'w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]'})
               : e('div',{className:'w-full h-full'})
           ),
@@ -428,7 +427,7 @@
           ])
         ]),
         e('div',{className:'relative w-full min-h-[calc(100vh-13rem)] flex items-center justify-center bg-neutral-50'},[
-          e(AutoImgBase,{src:albumSrc(album,pp),alt:`Album ${album} - Photo ${pp}`,
+          e(AutoImgBase,{src:`${PHOTOS_ROOT}/${album}/${pp}.jpg`,alt:`Album ${album} - Photo ${pp}`,
             className:'max-w-full max-h-[82vh] object-contain bg-white'})
         ]),
         e('div',{className:'px-4 pt-4 pb-10 max-w-4xl mx-auto flex flex-col items-center gap-3'},[
